@@ -210,7 +210,7 @@ def get_tv_info(query: str):
     for i in range(3):
         try:
             search = tmdb.Search()
-            search.tv(query=remove_tag(query), language='zh-CN')
+            search.tv(query=remove_tag(query).strip('!'), language='zh-CN')
             target_list = search.__dict__['results']
             if target_list:
                 target = target_list[0]
@@ -229,7 +229,7 @@ def get_moive_info(query: str):
     for i in range(3):
         try:
             search = tmdb.Search()
-            search.movie(query=remove_tag(query), language='zh-CN')
+            search.movie(query=remove_tag(query).strip('!'), language='zh-CN')
             target_list = search.__dict__['results']
             if target_list:
                 target = target_list[0]
@@ -300,8 +300,8 @@ def process_path(path: Path, R: Dict[Path, Path]):
     if not path.is_dir():
         return
     rtpath_name = remove_tag(path.name)
-    path_atri = rtpath_name.split(' ')
-    if len(path_atri) >= 3:
+    path_atri = re.split(r'[\s-]+', rtpath_name)
+    if len(path_atri) > 3:
         path_atri.pop(0)
         rtpath_name = ' '.join(path_atri)
     if rtpath_name.count('.') >= 3:
@@ -310,7 +310,7 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
     print(f'【处理路径】：{path.name}')
     print(f'【去除TAG】：{rtpath_name}')
-    if len(list(path.iterdir())) <= 7:
+    if len(list(path.iterdir())) <= 9:
         name, moive_info = get_moive_info(rtpath_name)
         print(f'电影名称: {name}')
         if IS_ANIME:
@@ -471,7 +471,11 @@ def trans_file(R: Dict[Path, Path]):
             elif PROCESS == 'COPY':
                 shutil.copy(source_path, target_path)
             elif PROCESS == 'LINK':
-                os.link(source_path, target_path)
+                try:
+                    os.link(source_path, target_path)
+                except:  # noqa:E722
+                    print(f'{BG_YELLOW}无法创建硬链接, 尝试软链接...{RESET}')
+                    os.symlink(source_path, target_path)
             else:
                 print('PROCESS模式错误！')
         except Exception as e:
@@ -621,3 +625,7 @@ if args.w == 'ALL':
     process()
 else:
     process_task_path(INPUT_PATH, {})
+
+while True:
+    input("按下回车键继续...")
+    break
