@@ -154,6 +154,11 @@ def chinese_to_arabic(cn: str) -> int:
     return val
 
 
+def remove_season(s: str):
+    s = re.sub(r'(S\d+)', '', s)
+    return s.strip()
+
+
 def remove_tag(s: str):
     for pattern in bracket_patterns:
         s = re.sub(pattern, '', s)
@@ -210,7 +215,10 @@ def get_tv_info(query: str):
     for i in range(3):
         try:
             search = tmdb.Search()
-            search.tv(query=remove_tag(query).strip('!'), language='zh-CN')
+            search.tv(
+                query=remove_season(remove_tag(query).strip('!')),
+                language='zh-CN',
+            )
             target_list = search.__dict__['results']
             if target_list:
                 target = target_list[0]
@@ -229,7 +237,10 @@ def get_moive_info(query: str):
     for i in range(3):
         try:
             search = tmdb.Search()
-            search.movie(query=remove_tag(query).strip('!'), language='zh-CN')
+            search.movie(
+                query=remove_season(remove_tag(query).strip('!')),
+                language='zh-CN',
+            )
             target_list = search.__dict__['results']
             if target_list:
                 target = target_list[0]
