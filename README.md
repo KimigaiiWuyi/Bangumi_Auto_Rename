@@ -65,9 +65,18 @@
   - `--k` ：这个是需要自己去[申请](https://www.themoviedb.org/settings/api)的，申请完之后可以替换下面示例中的key
   - `--t` ：这个参数如果填入`no`或者`real`等就会把识别到的剧集和电影放入`o_bangumi `目录和`o_movie`目录，如果是不填或者填入`Anime`就会把识别到的剧集放入`o_anime`和`o_anime_movie`目录
 - 这里给出几个示例，方便复制
+  - 下面这个命令是
+  - `--t`为`Anime`代表类型为动漫类型，只会输出到`o_anime`和`o_anime_movie`路径下
+  - 程序路径: `"F:\网盘\Bangumi_Auto_Rename.exe"`
+  - 输入/处理路径为`"D:\Download\Anime\[mawen1250&VCB-Studio] Toradora! [Hi10p_1080p]"`
+  - 动漫剧集输出路径：`"D:\TEST\OUTPUT\anime"``
+  - 电影输出路径：`"D:\TEST\OUTPUT\movie"`
+  - 动漫电影输出路径：`"D:\TEST\OUTPUT\anime_movie"`
+  - 真人剧集输出路径：`"D:\TEST\OUTPUT\bangumi"`
+- 直接复制后修改即可：
 
 ```shell
-$ "F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "D:\Download\Anime\[mawen1250&VCB-Studio] Toradora! [Hi10p_1080p]" --t "Anime" --k "e0f999999ea2d4f1cc99993762417df" --o_anime "D:\TEST\OUTPUT\anime" --o_movie "D:\TEST\OUTPUT\movie" --o_anime_movie "D:\TEST\OUTPUT\anime_movie" --o_bangumi "D:\TEST\OUTPUT\bangumi"
+"F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "D:\Download\Anime\[mawen1250&VCB-Studio] Toradora! [Hi10p_1080p]" --t "Anime" --k "e0f999999ea2d4f1cc99993762417df" --o_anime "D:\TEST\OUTPUT\anime" --o_movie "D:\TEST\OUTPUT\movie" --o_anime_movie "D:\TEST\OUTPUT\anime_movie" --o_bangumi "D:\TEST\OUTPUT\bangumi"
 ```
 
 ### 三、在qBittorrent下载完成后自动调用该程序
@@ -79,15 +88,17 @@ $ "F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "D:\Download\Ani
 
 ![qbit.png](https://s2.loli.net/2024/06/26/GXCfjaNKQSmZxDs.png)
 
-- 这里的命令相比于上面的命令行，需要做一些小的调整，首先一点是`--i`的输入，**一定**要用`"%F"`替换，这样就是每次种子实际下载的路径了，一个是`--t`的输入，**可以**用`"$G"`替换，代表着创建种子时候的标签，这里如果下载的是动漫剧集，可以不用输入标签，如果是真人剧集，可以带上`no`的标签，自动整理
-- 填入示例如下，需要自己修改一下四个**保存路径**和**程序路径**和TMDB的**Key**。
+- 这里的命令相比于上面的命令行，需要做一些小的调整，首先一点是`--i`的输入，**一定**要用`"%F"`替换（上图可能是`%D`，那是错误的，不要关心图上的命令），这样就是每次种子实际下载的路径了
+- 一个是`--t`的输入，**可以**用`"$G"`替换，代表着创建种子时候的标签，这里如果下载的是动漫剧集，可以不用输入标签，如果是真人剧集，可以带上`no`的标签，自动整理
+- 填入示例如下，复制的话需要自己修改一下四个**保存路径**和**程序路径**和TMDB的**Key**。
 
 ```shell
-$ "F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "%F" --t "%G" --k "e0fde99999999999773762417df" --o_anime "D:\Anime" --o_movie "D:\Moive" --o_anime_movie "E:\AnimeMoive" --o_bangumi "E:\Bangumi"
+"F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "%F" --t "%G" --k "e0fde99999999999773762417df" --o_anime "D:\Anime" --o_movie "D:\Moive" --o_anime_movie "E:\AnimeMoive" --o_bangumi "E:\Bangumi"
 ```
 
 ## 需要注意的
 
+- 该程序依靠**TMDB API**（因为Emby也是一样的，可以保证精准度），因此对**网络环境**有一定要求！
 - 该程序更加适用于动画剧集的重命名，对于电影、剧集，本身Emby的刮削足够精准了。
 - 识别率并不是100%，如果有识别错误的，带上截图，提Issuse！
 - 该程序使用情况覆盖了很多，但是像是非常复杂的情况，例如**物语系列**这种重量级剧集（加上TMDB对于物语系列的剧集分类，非常的复杂），请不要使用本程序
