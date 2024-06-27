@@ -26,42 +26,26 @@
 
 ![2.png](https://s2.loli.net/2024/06/26/8PmycWaSe3f6htC.png)
 
-## 使用方法（待定）
+## 使用方法
 
 >  ⚠提示：无论使用下面哪种方式，都必须携带参数，参数需要自己调整
 >
 > [命令行怎么写？](#命令行怎么写（参数详解）)
 
-### 一、调用EXE文件
+### 零、申请你的TMDB_API_KEY
+
+- 进入[官网](https://www.themoviedb.org/settings/api)申请
+- 复制你的**API 密钥**，后续会用到
+
+### 一、下载EXE文件
 
 - 无需Python环境，开箱即用
 - 下载[Release](https://github.com/KimigaiiWuyi/Bangumi_Auto_Rename/releases)中预先上传的`.exe`文件，即可开始使用
-- 打开命令行，输入命令
 
-```shell
-$ "下载的文件路径\Bangumi_Auto_Rename.exe"
-```
+### 二、使用
 
-### 二、命令行直接使用
-
-- 需要Python环境、安装依赖等等
-- 打开终端，输入命令
-
-```shell
-$ python Bangumi_Auto_Rename.py
-```
-
-### 三、在qBittorrent下载完成后自动调用该程序
-
-> ⚠注意：箭头处的命令需要根据上面命令行自己写一下，照抄无效！
-
-- 打开软件，**工具** -> **设置** -> 弹出窗口中找到**下载** -> 往下滚动 -> **Torrent完成时运行**
-- 根据自己的配置，写入命令，**应用**保存即可
-
-![qbit.png](https://s2.loli.net/2024/06/26/GXCfjaNKQSmZxDs.png)
-
-### 命令行怎么写（参数详解）
-
+- 打开终端（Win+R输入**cmd.exe**，回车，或者右键菜单可以打开）
+- 输入**命令**，命令构造方式如下：
 ```shell
   -h, --help                            show this help message and exit
   --w W                                 工作模式: ALL/TASK(默认TASK即可)
@@ -75,6 +59,42 @@ $ python Bangumi_Auto_Rename.py
   --o_bangumi O_BANGUMI                 剧集解析完成之后输出路径
 ```
 
-### 示例
+- 需要关注的参数有几个
+  - `--w`：这个参数可以填`TASK`或者`ALL`，`ALL`模式对应批量整理，适用于一个输入目录下存在多个剧集的情况，`TASK`适合QBIT下载完成之后自动任务，可以识别单个剧集，包括剧集中同时存在剧场版&不同季度动画子文件夹得情况
+  - `--i`：输入目录
+  - `--k` ：这个是需要自己去[申请](https://www.themoviedb.org/settings/api)的，申请完之后可以替换下面示例中的key
+  - `--t` ：这个参数如果填入`no`或者`real`等就会把识别到的剧集和电影放入`o_bangumi `目录和`o_movie`目录，如果是不填或者填入`Anime`就会把识别到的剧集放入`o_anime`和`o_anime_movie`目录
+- 这里给出几个示例，方便复制
 
-待定...
+```shell
+$ "F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "D:\Download\Anime\[mawen1250&VCB-Studio] Toradora! [Hi10p_1080p]" --t "Anime" --k "e0f999999ea2d4f1cc99993762417df" --o_anime "D:\TEST\OUTPUT\anime" --o_movie "D:\TEST\OUTPUT\movie" --o_anime_movie "D:\TEST\OUTPUT\anime_movie" --o_bangumi "D:\TEST\OUTPUT\bangumi"
+```
+
+### 三、在qBittorrent下载完成后自动调用该程序
+
+> ⚠注意：箭头处的命令需要根据上面命令行自己写一下，照抄无效！（下面有提供示例）
+
+- 打开软件，**工具** -> **设置** -> 弹出窗口中找到**下载** -> 往下滚动 -> **Torrent完成时运行**
+- 根据自己的配置，写入命令，**应用**保存即可
+
+![qbit.png](https://s2.loli.net/2024/06/26/GXCfjaNKQSmZxDs.png)
+
+- 这里的命令相比于上面的命令行，需要做一些小的调整，首先一点是`--i`的输入，**一定**要用`"%F"`替换，这样就是每次种子实际下载的路径了，一个是`--t`的输入，**可以**用`"$G"`替换，代表着创建种子时候的标签，这里如果下载的是动漫剧集，可以不用输入标签，如果是真人剧集，可以带上`no`的标签，自动整理
+- 填入示例如下，需要自己修改一下四个**保存路径**和**程序路径**和TMDB的**Key**。
+
+```shell
+$ "F:\网盘\Bangumi_Auto_Rename.exe" --w "TASK" --p "LINK" --i "%F" --t "%G" --k "e0fde99999999999773762417df" --o_anime "D:\Anime" --o_movie "D:\Moive" --o_anime_movie "E:\AnimeMoive" --o_bangumi "E:\Bangumi"
+```
+
+## 需要注意的
+
+- 该程序更加适用于动画剧集的重命名，对于电影、剧集，本身Emby的刮削足够精准了。
+- 识别率并不是100%，如果有识别错误的，带上截图，提Issuse！
+- 该程序使用情况覆盖了很多，但是像是非常复杂的情况，例如**物语系列**这种重量级剧集（加上TMDB对于物语系列的剧集分类，非常的复杂），请不要使用本程序
+- 如果已经使用了本程序刮削错误的情况，因为默认是**硬链接**模式，所以直接删除目标文件夹的对应文件即可，不会影响到源文件！
+- 有任何使用上的问题或者建议都可以提issuse，尽力解答！
+
+- 如果本插件对你有帮助，不要忘了点个Star~
+- 本项目仅供学习使用，请勿用于商业用途
+- [爱发电](https://afdian.net/@KimigaiiWuyi)
+- [GPL-3.0 License](https://github.com/KimigaiiWuyi/Bangumi_Auto_Rename/blob/main/LICENSE) ©[@KimigaiiWuyi](https://github.com/KimigaiiWuyi)

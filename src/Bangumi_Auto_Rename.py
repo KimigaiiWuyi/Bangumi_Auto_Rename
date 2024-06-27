@@ -344,10 +344,6 @@ def process_path(path: Path, R: Dict[Path, Path]):
     else:
         name, tv_info = get_tv_info(rtpath_name)
         print(f'剧集名称: {name}')
-        if not name:
-            print(
-                f'{BG_YELLOW}【警告】【警告】无法识别，跳过{rtpath_name}【警告】【警告】{RESET}'
-            )
         if IS_ANIME:
             search_result = jikan.search(
                 'anime',
@@ -365,6 +361,18 @@ def process_path(path: Path, R: Dict[Path, Path]):
         else:
             titles = [{'type': 'Default', 'title': name}]
             _WORK_PATH = BANGUMI_PATH
+
+        if not name:
+            if titles:
+                for title in titles:
+                    if title['type'] == 'Default':
+                        name, tv_info = get_tv_info(title['title'])
+                        print(f'剧集名称: {name}')
+                        break
+            if not name:
+                print(
+                    f'{BG_YELLOW}【警告】【警告】无法识别，跳过{rtpath_name}【警告】【警告】{RESET}'
+                )
 
         if tv_info:
             first_data: str = tv_info['first_air_date']
@@ -610,8 +618,7 @@ INPUT_PATH = Path(args.i)
 PROCESS = args.p
 IS_ANIME = (
     False
-    if not args.t
-    or args.t.lower()
+    if args.t.lower()
     in [
         'false',
         'no',
