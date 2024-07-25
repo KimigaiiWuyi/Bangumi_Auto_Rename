@@ -120,6 +120,18 @@ BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
 
 
+def match_and_extract(input_string: str):
+    pattern = re.compile(r'S(\d+)E(\d+)')
+    match = pattern.search(input_string)
+
+    if match:
+        season = int(match.group(1))
+        episode = int(match.group(2))
+        return season, episode
+    else:
+        return None
+
+
 def chinese_to_arabic(cn: str) -> int:
     unit = 0
     ldig = []
@@ -281,23 +293,29 @@ def process_sub(
                 break
         else:
             for ex in EXTRA_TAG:
-                if ex.lower() in item_name_r:
+                if f'[{ex.lower()}]' in item_name_r:
                     t = work_path / 'extra'
                     R[item_path] = t / item_name
                     break
             else:
                 for s0 in S0_TAG:
-                    if s0.lower() in item_name_r:
+                    if f'[{s0.lower()}]' in item_name_r:
                         t = work_path / 'Season0'
                         R[item_path] = t / item_name
                         break
                 else:
-                    t = work_path / f'Season{season_id}'
                     epp = extract_base_num(item_name)
                     if epp is None:
                         ep = int(extract_number(item_name))
                     else:
                         ep = int(epp)
+
+                    _idata = match_and_extract(item_name)
+                    if _idata:
+                        season_id, ep = _idata[0], _idata[1]
+
+                    t = work_path / f'Season{season_id}'
+
                     ep = f'0{ep}' if ep < 10 else ep
                     s = f'0{int(season_id)}'
                     ss = s if season_id < 10 else int(season_id)
