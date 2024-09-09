@@ -326,8 +326,11 @@ def process_sub(
 
 # 这是用于处理路径内已经是视频文件的，例如直接就是Season1或者子文件夹的情况
 def process_path(path: Path, R: Dict[Path, Path]):
+    '''
     if not path.is_dir():
         return
+    '''
+    # 允许处理单独视频情况
     rtpath_name = remove_tag(path.name)
     path_atri = re.split(r'[\s-]+', rtpath_name)
     if len(path_atri) > 3:
@@ -339,7 +342,10 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
     print(f'【处理路径】：{path.name}')
     print(f'【去除TAG】：{rtpath_name}')
-    if len(list(path.iterdir())) <= 9:
+    if path.is_file() and path.suffix.lower() not in VIDEO_SUFFIX:
+        return
+
+    if (path.is_dir() and len(list(path.iterdir())) <= 9) or path.is_file():
         name, moive_info = get_moive_info(rtpath_name)
         print(f'电影名称: {name}')
         if IS_ANIME:
@@ -352,13 +358,16 @@ def process_path(path: Path, R: Dict[Path, Path]):
                 f'{BG_YELLOW}【警告】【警告】无法识别，跳过{rtpath_name}【警告】【警告】{RESET}'
             )
         if moive_info:
-            first_data: str = moive_info['release_date']
+            first_data = moive_info['release_date']
             first_year = first_data.split('-')[0]
             work_path = _WORK_PATH / f'{name} ({first_year})'
             work_path.mkdir(parents=True, exist_ok=True)
-            for item_path in path.iterdir():
-                item_name = item_path.name
-                R[item_path] = work_path / f'{name} - {item_name}'
+            if path.is_file():
+                R[path] = work_path / f'{name} - {path.name}'
+            else:
+                for item_path in path.iterdir():
+                    item_name = item_path.name
+                    R[item_path] = work_path / f'{name} - {item_name}'
     else:
         name, tv_info = get_tv_info(rtpath_name)
         print(f'剧集名称: {name}')
@@ -485,7 +494,8 @@ def trans_file(R: Dict[Path, Path]):
     # 用json备份一下R文件
     now = datetime.datetime.now()
     now_str = now.strftime("%Y-%m-%d-%H")
-    path = INPUT_PATH / f'R-{now_str}.json'
+    _input = INPUT_PATH if INPUT_PATH.is_dir() else INPUT_PATH.parent
+    path = _input / f'R-{now_str}.json'
 
     _R = {str(k): str(v) for k, v in R.items()}
 
@@ -560,6 +570,8 @@ def process_task_path(path: Path, R: Dict):
         else:
             for sub_path in path.iterdir():
                 process_path(sub_path, R)
+    else:
+        process_path(path, R)
 
 
 def process():
