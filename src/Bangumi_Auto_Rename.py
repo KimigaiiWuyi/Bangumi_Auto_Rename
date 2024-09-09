@@ -389,6 +389,7 @@ def process_path(path: Path, R: Dict[Path, Path]):
             else:
                 data = search_result['data'][0]
             titles = data['titles']
+            print(f'【MyAnimeList】【识别结果】: {titles}')
             _WORK_PATH = ANIME_PATH
         else:
             titles = [{'type': 'Default', 'title': name}]
@@ -397,9 +398,9 @@ def process_path(path: Path, R: Dict[Path, Path]):
         if not name:
             if titles:
                 for title in titles:
-                    if title['type'] == 'Default':
-                        name, tv_info = get_tv_info(title['title'])
-                        print(f'剧集名称: {name}')
+                    name, tv_info = get_tv_info(title['title'])
+                    print(f'【TMDB】【{title["type"]}】剧集名称: {name}')
+                    if name:
                         break
             if not name:
                 print(
