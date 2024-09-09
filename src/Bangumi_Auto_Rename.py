@@ -167,7 +167,7 @@ def chinese_to_arabic(cn: str) -> int:
 
 
 def remove_season(s: str):
-    s = re.sub(r'(S\d+)', '', s)
+    s = re.sub(r'(S[\d]{1,2})', '', s)
     return s.strip()
 
 
@@ -226,18 +226,23 @@ def get_tv_info(query: str):
 
     for i in range(3):
         try:
-            search = tmdb.Search()
-            search.tv(
-                query=remove_season(remove_tag(query).strip('!')),
-                language='zh-CN',
-            )
-            target_list = search.__dict__['results']
-            if target_list:
-                target = target_list[0]
-                name = target['name']
-                tv = tmdb.TV(target['id'])
-                tv.info()
-                return name, tv.__dict__
+            for _ in range(2):
+                search = tmdb.Search()
+                query = remove_season(remove_tag(query).strip('!'))
+                print(f'【TMDB搜索】：{query}')
+                search.tv(
+                    query=query,
+                    language='zh-CN',
+                )
+                target_list = search.__dict__['results']
+                if target_list:
+                    target = target_list[0]
+                    name = target['name']
+                    tv = tmdb.TV(target['id'])
+                    tv.info()
+                    return name, tv.__dict__
+                else:
+                    query = re.sub(r'[a-zA-Z]', '', query)
             return '', None
         except:  # noqa:E722, B001
             sleep(5)
