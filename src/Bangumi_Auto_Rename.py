@@ -168,6 +168,7 @@ def chinese_to_arabic(cn: str) -> int:
 
 def remove_season(s: str):
     s = re.sub(r'(S[\d]{1,2})', '', s)
+    s = re.sub(r'(第[\d一二三四五六七八九零]{1,2}季)', '', s)
     return s.strip()
 
 
@@ -339,7 +340,7 @@ def process_path(path: Path, R: Dict[Path, Path]):
     rtpath_name = remove_tag(path.name)
     path_atri = re.split(r'[\s-]+', rtpath_name)
     if len(path_atri) > 3:
-        path_atri.pop(0)
+        # path_atri.pop(0)
         rtpath_name = ' '.join(path_atri)
     if rtpath_name.count('.') >= 3:
         rtpath_name = ' '.join(rtpath_name.split('.'))
