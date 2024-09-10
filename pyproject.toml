@@ -6,8 +6,8 @@ authors = [
     {name = "KimigaiiWuyi", email = "444835641@qq.com"},
 ]
 dependencies = [
-    "jikanpy>=4.3.2",
     "tmdbsimple>=2.9.1",
+    "jikanpy-v4>=1.0.2",
 ]
 requires-python = ">=3.7"
 readme = "README.md"

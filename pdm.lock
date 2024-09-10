@@ -4,8 +4,11 @@
 [metadata]
 groups = ["default"]
 strategy = ["cross_platform", "inherit_metadata"]
-lock_version = "4.4.1"
-content_hash = "sha256:d2bca16ddbf2663f56f3de865522f8af9388f996487517598575d8dfb891c290"
+lock_version = "4.5.0"
+content_hash = "sha256:28c24258fe4988c3c72ed6c7f96e264e82c1a1e8964388bebc44483f33ac16dd"
+
+[[metadata.targets]]
+requires_python = ">=3.7"
 
 [[package]]
 name = "aiohttp"
@@ -20,6 +23,7 @@ dependencies = [
     "attrs>=17.3.0",
     "charset-normalizer<4.0,>=2.0",
     "frozenlist>=1.1.1",
+    "idna-ssl>=1.0; python_version < \"3.7\"",
     "multidict<7.0,>=4.5",
     "typing-extensions>=3.7.4; python_version < \"3.8\"",
     "yarl<2.0,>=1.0",
@@ -389,6 +393,22 @@ dependencies = [
 files = [
     {file = "jikanpy-4.3.2-py3-none-any.whl", hash = "sha256:e6b7ccade811cb1ce39db79f98591ced6725324b7857fc53efd1789bd35fbc99"},
     {file = "jikanpy-4.3.2.tar.gz", hash = "sha256:b0c41e355c911e8c0ce262db3fbdcc2b5b92ffc4a402c1949b63126c0b5db9de"},
+]
+
+[[package]]
+name = "jikanpy-v4"
+version = "1.0.2"
+requires_python = ">=3.6"
+summary = "Python wrapper for the Jikan API"
+groups = ["default"]
+dependencies = [
+    "aiohttp",
+    "requests",
+    "simplejson",
+]
+files = [
+    {file = "jikanpy_v4-1.0.2-py3-none-any.whl", hash = "sha256:7091f3f0cd3ee47c65e4635e726bff2c1283dfa64015b4e235d08197feb43e7b"},
+    {file = "jikanpy_v4-1.0.2.tar.gz", hash = "sha256:f8b7c598773787a29c15a4330ef44f1d879950941425497b00b5e82fec9e4405"},
 ]
 
 [[package]]
