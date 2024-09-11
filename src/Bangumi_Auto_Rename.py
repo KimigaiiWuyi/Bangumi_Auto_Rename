@@ -85,16 +85,23 @@ cn_num = {
     '千': 1000,
     '万': 10000,
 }
-ordinal_numbers = {
-    "First": 1,
-    "Second": 2,
-    "Third": 3,
-    "Fourth": 4,
-    "Fifth": 5,
-    " III": 3,
-    " II": 2,
-    " IV": 4,
-}
+season_partten = [
+    r'S([\d]{1,2})',
+    r'第([\d一二三四五六七八九零]{1,2})季',
+    r'([\d]{1,2})nd Season',
+    r'Season ([\d]{1,2})',
+]
+code_partten = [
+    r'Ma[\d]{1,2}[pP]',
+    r'[\d]{3,4}[pP]',
+    r'x264|x265',
+    r'_flac',
+    r'x265',
+    r'h264',
+    r'h265',
+    r'10bit',
+    r'8bit',
+]
 
 # 前景色
 RED = "\033[31m"
@@ -166,10 +173,60 @@ def chinese_to_arabic(cn: str) -> int:
     return val
 
 
+def chinese_to_number(chinese_numeral):
+    chinese_digits = {
+        '零': 0,
+        '一': 1,
+        '二': 2,
+        '三': 3,
+        '四': 4,
+        '五': 5,
+        '六': 6,
+        '七': 7,
+        '八': 8,
+        '九': 9,
+    }
+    if chinese_numeral in chinese_digits:
+        return chinese_digits[chinese_numeral]
+    return None
+
+
+def extract_season(text: str):
+    # 匹配 第1季, 第二季 等
+    match = re.search(r'第([\d一二三四五六七八九零]{1,2})季', text)
+    if match:
+        season_str = match.group(1)
+        if season_str.isdigit():
+            return int(season_str)
+        else:
+            # 中文数字转换为阿拉伯数字
+            season_number = 0
+            for char in season_str:
+                _a = chinese_to_number(char)
+                if _a is not None:
+                    season_number += _a
+            return season_number
+
+    for p in season_partten:
+        if p != r'第[\d一二三四五六七八九零]({1,2})季':
+            match = re.search(p, text)
+            if match:
+                return int(match.group(1))
+
+    # 未找到匹配项
+    return 1
+
+
 def remove_season(s: str):
-    s = re.sub(r'(S[\d]{1,2})', '', s)
-    s = re.sub(r'(第[\d一二三四五六七八九零]{1,2}季)', '', s)
+    for p in season_partten:
+        s = re.sub(p, '', s)
     return s.strip()
+
+
+def remove_code(s: str) -> str:
+    for p in code_partten:
+        s = re.sub(p, '', s)
+    return s
 
 
 def remove_tag(s: str):
@@ -204,9 +261,9 @@ def extract_base_num(filename: str) -> Optional[float]:
         return None
 
 
-def extract_number(filename: str) -> float:
+def extract_number(filename: str) -> Optional[float]:
     match = re.search(
-        r'(\d+\.?\d+|[一二三四五六七八九十百千万]+\.?[\.一二三四五六七八九十百千万]+)',
+        r'(\d+\.?\d+|[零一二三四五六七八九十百千万]+\.?[\.零一二三四五六七八九十百千万]+)',
         filename,
     )
     if match:
@@ -216,7 +273,18 @@ def extract_number(filename: str) -> float:
         else:
             return chinese_to_arabic(r)
     else:
-        return 0
+        return None
+
+
+def is_chinese_percentage_sufficient(text: str):
+    chinese_pattern = re.compile(r'[\u4e00-\u9fff]')
+    chinese_chars = chinese_pattern.findall(text)
+    total_chars = len(text)
+    chinese_char_count = len(chinese_chars)
+    if total_chars > 0:
+        return chinese_char_count / total_chars >= 0.25
+    else:
+        return False
 
 
 def get_tv_info(query: str):
@@ -243,7 +311,8 @@ def get_tv_info(query: str):
                     tv.info()
                     return name, tv.__dict__
                 else:
-                    query = re.sub(r'[a-zA-Z]', '', query)
+                    if is_chinese_percentage_sufficient(query):
+                        query = re.sub(r'[a-zA-Z]', '', query)
             return '', None
         except:  # noqa:E722, B001
             sleep(5)
@@ -299,7 +368,7 @@ def process_sub(
                 break
         else:
             for ex in EXTRA_TAG:
-                if f'[{ex.lower()}]' in item_name_r:
+                if re.search(rf'\[{ex.lower()}[\d]{{0,3}}\]', item_name_r):
                     t = work_path / 'extra'
                     R[item_path] = t / item_name
                     break
@@ -310,11 +379,17 @@ def process_sub(
                         R[item_path] = t / item_name
                         break
                 else:
-                    epp = extract_base_num(item_name)
+                    _item_name = remove_code(remove_season(item_name))
+                    epp = extract_base_num(_item_name)
                     if epp is None:
-                        ep = int(extract_number(item_name))
+                        ep = extract_number(_item_name)
                     else:
                         ep = int(epp)
+                    if ep is None:
+                        season_id = 0
+                        ep = 0
+                    else:
+                        ep = int(ep)
 
                     _idata = match_and_extract(item_name)
                     if _idata:
@@ -388,7 +463,12 @@ def process_path(path: Path, R: Dict[Path, Path]):
                     data = i
                     break
             else:
-                data = search_result['data'][0]
+                for i in search_result['data']:
+                    if i['type'] == 'TV':
+                        data = i
+                        break
+                else:
+                    data = search_result['data'][0]
             titles = data['titles']
             print(f'【MyAnimeList】【识别结果】: {titles}')
             _WORK_PATH = ANIME_PATH
@@ -428,13 +508,10 @@ def process_path(path: Path, R: Dict[Path, Path]):
                 print(f'【SNAME】: {sname}')
 
                 if sname.startswith('Season') and re.search(r'\d', sname):
-                    is_break = False
-                    for oseason in ordinal_numbers:
-                        if oseason in rtpath_name:
-                            is_break = True
-                            season_id = ordinal_numbers[oseason]
-                            break
-                    if is_break:
+                    int_season = extract_season(sname)
+                    int_rtpath_name = extract_season(rtpath_name)
+                    if int_season == int_rtpath_name:
+                        season_id = int_rtpath_name
                         break
 
                 # 如果不是Season1的情况下，sname处于路径之中，则直接跳过
