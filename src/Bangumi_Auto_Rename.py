@@ -229,9 +229,28 @@ def remove_code(s: str) -> str:
     return s
 
 
-def remove_tag(s: str):
-    for pattern in bracket_patterns:
-        s = re.sub(pattern, '', s)
+def remove_tag(s: str, skip=False):
+    if skip:
+        # 创建一个字典来追踪每种括号的匹配次数
+        counts = {pattern: 0 for pattern in bracket_patterns}
+
+        # 定义替换函数，追踪匹配次数并决定是否保留第二个匹配
+        def replace_match(pattern, match):
+            counts[pattern] += 1
+            # 保留每种括号的第二个匹配，否则去除
+            if counts[pattern] == 2:
+                return match.group(0)
+            else:
+                return ''
+
+        # 对每个模式应用相应的匹配逻辑
+        for pattern in bracket_patterns:
+            s = re.sub(pattern, lambda m: replace_match(pattern, m), s)
+    else:
+        # 不启用跳过规则，正常删除所有匹配项
+        for pattern in bracket_patterns:
+            s = re.sub(pattern, '', s)
+
     return s.strip()
 
 
@@ -413,6 +432,8 @@ def process_path(path: Path, R: Dict[Path, Path]):
     '''
     # 允许处理单独视频情况
     rtpath_name = remove_tag(path.name)
+    if not rtpath_name:
+        rtpath_name = remove_tag(path.name, True)
     path_atri = re.split(r'[\s-]+', rtpath_name)
     if len(path_atri) > 3:
         # path_atri.pop(0)

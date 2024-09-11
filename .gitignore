@@ -163,3 +163,7 @@ cython_debug/
 
 output
 test.py
+Bangumi_Auto_Rename.build
+Bangumi_Auto_Rename.exe
+Bangumi_Auto_Rename.dist
+Bangumi_Auto_Rename.onefile-build
