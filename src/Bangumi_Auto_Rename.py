@@ -10,6 +10,7 @@ from time import sleep
 import os
 from difflib import SequenceMatcher
 from jikanpy import Jikan
+import difflib
 
 jikan = Jikan()
 
@@ -31,21 +32,18 @@ EXTRA_TAG = [
     'Fans',
     '访谈',
     'Preview',
+    '预告',
 ]
 S0_TAG = [
-    'OVA01',
-    'OVA02',
-    'OVA03',
-    'OVA04',
-    'OVA05',
-    'OVA',
-    'OAD',
-    'Special',
-    'sp',
-    'SP',
-    '00',
-    '.5',
-    'Chaos no Kakera',
+    r'OVA',
+    r'OVA',
+    r'OAD',
+    r'Special',
+    r'sp',
+    r'SP',
+    r'00',
+    r'\.5',
+    r'Chaos no Kakera',
 ]
 VIDEO_SUFFIX = [
     '.mp4',
@@ -125,6 +123,85 @@ BG_WHITE = "\033[47m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
+
+
+def remove_similar_part(common_parts: List[str], filename: str):
+    for common_part in common_parts:
+        if len(common_part) > 3:  # 确保只移除长度大于3的部分
+            pattern = re.escape(common_part)
+            filename = re.sub(pattern, '', filename).strip()
+    print(f'【移除相似部分】：{filename}')
+    return filename
+
+
+def find_common_substrings_in_all(
+    filenames: List[str], min_length: int = 3
+) -> List[str]:
+    common_substrings: List[str] = []
+
+    # 取第一个文件名作为初始比较基础
+    base_string = filenames[0]
+
+    for filename in filenames[1:]:
+        matcher = difflib.SequenceMatcher(None, base_string, filename)
+        blocks = matcher.get_matching_blocks()
+
+        # 每次匹配相似块，保留长度大于min_length的部分
+        for match in blocks:
+            if match.size > min_length:
+                A = match.a
+                B = match.size
+                substring = base_string[A : A + B]  # noqa: E203
+                if substring not in common_substrings:
+                    common_substrings.append(substring)
+
+    # 只保留在所有文件中都存在的相似部分
+    final_common_substrings: List[str] = []
+    for substring in common_substrings:
+        if all(substring in filename for filename in filenames):
+            final_common_substrings.append(substring)
+
+    print(f'【相似部分】：{final_common_substrings}')
+    return final_common_substrings
+
+
+# 移除相似的部分
+def remove_similar_parts(
+    filenames: List[str],
+    common_parts: List[str],
+) -> List[str]:
+    cleaned_filenames: List[str] = []
+
+    for filename in filenames:
+        for common_part in common_parts:
+            if len(common_part) > 3:  # 确保只移除长度大于3的部分
+                pattern = re.escape(common_part)
+                filename = re.sub(pattern, '', filename).strip()
+        cleaned_filenames.append(filename)
+
+    return cleaned_filenames
+
+
+# 遍历路径并筛选出视频文件
+def find_unique_parts_in_videos(
+    directory: Path,
+):
+    video_ext = ['.mp4', '.mkv', '.avi', '.mov', '.flv']
+    files: List[Path] = [
+        file for file in directory.iterdir() if file.suffix in video_ext
+    ]
+    filenames: List[str] = [file.stem for file in files]
+
+    if len(filenames) < 2:
+        return None
+
+    # 找出所有文件的公共相似部分
+    common_parts = find_common_substrings_in_all(filenames)
+
+    # 移除相似部分，保留不同部分
+    # unique_parts = remove_similar_parts(filenames, common_parts)
+
+    return common_parts
 
 
 def match_and_extract(input_string: str):
@@ -366,14 +443,19 @@ def get_tv_season_info(tv: Dict) -> List[Dict]:
 
 
 def process_sub(
+    item_repeat: Optional[List[str]],
     item_path: Path,
     work_path: Path,
     R: Dict[Path, Path],
     season_id: int,
 ):
     item_name = item_path.name
-    item_name_l = item_name.lower()
-    item_name_r = extra_tag(item_name_l)
+    if item_repeat:
+        item_name_remove = remove_similar_part(item_repeat, item_path.stem)
+    else:
+        item_name_remove = item_path.stem
+
+    item_name_l = item_name_remove.lower()
     item_suffix = item_path.suffix.lower()
 
     for ignore_dir in IGNORE_DIR:
@@ -387,13 +469,13 @@ def process_sub(
                 break
         else:
             for ex in EXTRA_TAG:
-                if re.search(rf'\[{ex.lower()}[\d]{{0,3}}\]', item_name_r):
+                if re.search(rf'{ex.lower()}[\d]{{0,3}}', item_name_l):
                     t = work_path / 'extra'
                     R[item_path] = t / item_name
                     break
             else:
                 for s0 in S0_TAG:
-                    if f'[{s0.lower()}]' in item_name_r:
+                    if re.search(rf'{s0.lower()}[\d]{{0,3}}', item_name_l):
                         t = work_path / 'Season0'
                         R[item_path] = t / item_name
                         break
@@ -586,10 +668,11 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
             for item_path in path.iterdir():
                 if item_path.is_dir():
+                    repeat = find_unique_parts_in_videos(item_path)
                     for sub_item in item_path.iterdir():
-                        process_sub(sub_item, work_path, R, season_id)
+                        process_sub(repeat, sub_item, work_path, R, season_id)
                 else:
-                    process_sub(item_path, work_path, R, season_id)
+                    process_sub(repeat, item_path, work_path, R, season_id)
 
     trans_file(R)
     R.clear()
