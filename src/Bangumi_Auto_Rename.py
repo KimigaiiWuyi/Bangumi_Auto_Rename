@@ -579,17 +579,25 @@ def process_path(path: Path, R: Dict[Path, Path]):
             titles = [{'type': 'Default', 'title': name}]
             _WORK_PATH = BANGUMI_PATH
 
-        if not name:
-            if titles:
+        if titles:
+            for title in titles:
+                if title['type'] == 'Japanese':
+                    name, tv_info = get_tv_info(title['title'])
+                    print(
+                        f'【TMDB】【优先日文搜索】【{title["type"]}】剧集名称: {name}'
+                    )
+                    if name:
+                        break
+            else:
                 for title in titles:
                     name, tv_info = get_tv_info(title['title'])
                     print(f'【TMDB】【{title["type"]}】剧集名称: {name}')
                     if name:
                         break
-            if not name:
-                print(
-                    f'{BG_YELLOW}【警告】【警告】无法识别，跳过{rtpath_name}【警告】【警告】{RESET}'
-                )
+        if not name:
+            print(
+                f'{BG_YELLOW}【警告】【警告】无法识别，跳过{rtpath_name}【警告】【警告】{RESET}'
+            )
 
         if tv_info:
             first_data: str = tv_info['first_air_date']
@@ -612,7 +620,9 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
                 if sname.startswith('Season') and re.search(r'\d', sname):
                     int_season = extract_season(sname)
-                    int_rtpath_name = extract_season(rtpath_name)
+                    print(f'【提取信息季号】:{int_season}')
+                    int_rtpath_name = extract_season(path.name)
+                    print(f'【提取标题季号】:{int_rtpath_name}')
                     if int_season == int_rtpath_name:
                         season_id = int_rtpath_name
                         break
@@ -666,6 +676,7 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
             print(f'季号：{season_id}')
 
+            repeat = find_unique_parts_in_videos(path)
             for item_path in path.iterdir():
                 if item_path.is_dir():
                     repeat = find_unique_parts_in_videos(item_path)
