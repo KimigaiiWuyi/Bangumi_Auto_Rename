@@ -405,6 +405,7 @@ def get_tv_info(query: str):
                     name = target['name']
                     tv = tmdb.TV(target['id'])
                     tv.info()
+                    print(tv.__dict__)
                     return name, tv.__dict__
                 else:
                     if is_chinese_percentage_sufficient(query):
@@ -430,6 +431,7 @@ def get_moive_info(query: str):
                 name = target['title']
                 movie = tmdb.Movies(target['id'])
                 movie.info()
+                print(movie.__dict__)
                 return name, movie.__dict__
             return '', None
         except:  # noqa:E722, B001
@@ -523,13 +525,16 @@ def process_path(path: Path, R: Dict[Path, Path]):
     if rtpath_name.count('.') >= 3:
         rtpath_name = ' '.join(rtpath_name.split('.'))
         rtpath_name = divide_by_year(rtpath_name)
+        rtpath_name = remove_season(rtpath_name)
 
     print(f'【处理路径】：{path.name}')
     print(f'【去除TAG】：{rtpath_name}')
     if path.is_file() and path.suffix.lower() not in VIDEO_SUFFIX:
         return
 
-    if (path.is_dir() and len(list(path.iterdir())) <= 9) or path.is_file():
+    if (
+        path.is_dir() and len([i for i in path.iterdir() if i.is_file()]) <= 6
+    ) or path.is_file():
         name, moive_info = get_moive_info(rtpath_name)
         print(f'电影名称: {name}')
         if IS_ANIME:
@@ -676,6 +681,7 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
             print(f'季号：{season_id}')
 
+            print(path)
             repeat = find_unique_parts_in_videos(path)
             for item_path in path.iterdir():
                 if item_path.is_dir():
