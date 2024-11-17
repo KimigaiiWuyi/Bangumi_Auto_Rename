@@ -33,6 +33,8 @@ EXTRA_TAG = [
     '访谈',
     'Preview',
     '预告',
+    '特典',
+    '映像',
 ]
 S0_TAG = [
     r'OVA',
@@ -59,6 +61,28 @@ VIDEO_SUFFIX = [
     '.rm',
     '.rmvb',
 ]
+
+keywords = [
+    '01',
+    '1080P',
+    'FLAC',
+    '简繁',
+    '外挂',
+    'MKV',
+    'MP4',
+    'TV',
+    '全集',
+    'HEVC',
+    '8bit',
+    '10bit',
+    '720P',
+    '2160P',
+    '4K',
+    'BD',
+    'RIP',
+    'DBD-raws',
+]
+
 bracket_patterns = [
     r'\[.*?\]',
     r'【.*?】',
@@ -85,7 +109,7 @@ cn_num = {
 }
 season_partten = [
     r'S([\d]{1,2})',
-    r'第([\d一二三四五六七八九零]{1,2})季',
+    r'第([\d一二三四五六七八九零]{1,2})(季|部分|部)',
     r'([\d]{1,2})nd Season',
     r'Season ([\d]{1,2})',
 ]
@@ -123,6 +147,25 @@ BG_WHITE = "\033[47m"
 RESET = "\033[0m"
 BOLD = "\033[1m"
 UNDERLINE = "\033[4m"
+
+
+def clean_title_case_insensitive(title: str):
+    # 将关键词和标题转换为小写进行匹配
+    lower_keywords = [kw.lower() for kw in keywords]
+    j = '|'.join(re.escape(kw) for kw in lower_keywords)
+    keyword_regex = re.compile(j)
+
+    # 遍历所有括号类型
+    for pattern in bracket_patterns:
+        # 查找所有匹配的括号内容
+        matches = re.findall(pattern, title)  # 保留原始大小写内容
+        for match in matches:
+            # 转为小写进行匹配
+            if keyword_regex.search(match.lower()):
+                title = title.replace(match, '')  # 删除原始大小写内容
+
+    # 返回清理后的标题
+    return title.strip()[1:-1]
 
 
 def remove_similar_part(common_parts: List[str], filename: str):
@@ -165,23 +208,6 @@ def find_common_substrings_in_all(
     return final_common_substrings
 
 
-# 移除相似的部分
-def remove_similar_parts(
-    filenames: List[str],
-    common_parts: List[str],
-) -> List[str]:
-    cleaned_filenames: List[str] = []
-
-    for filename in filenames:
-        for common_part in common_parts:
-            if len(common_part) > 3:  # 确保只移除长度大于3的部分
-                pattern = re.escape(common_part)
-                filename = re.sub(pattern, '', filename).strip()
-        cleaned_filenames.append(filename)
-
-    return cleaned_filenames
-
-
 # 遍历路径并筛选出视频文件
 def find_unique_parts_in_videos(
     directory: Path,
@@ -197,9 +223,6 @@ def find_unique_parts_in_videos(
 
     # 找出所有文件的公共相似部分
     common_parts = find_common_substrings_in_all(filenames)
-
-    # 移除相似部分，保留不同部分
-    # unique_parts = remove_similar_parts(filenames, common_parts)
 
     return common_parts
 
@@ -270,7 +293,7 @@ def chinese_to_number(chinese_numeral):
 
 def extract_season(text: str):
     # 匹配 第1季, 第二季 等
-    match = re.search(r'第([\d一二三四五六七八九零]{1,2})季', text)
+    match = re.search(r'第([\d一二三四五六七八九零]{1,2})(季|部分|部)', text)
     if match:
         season_str = match.group(1)
         if season_str.isdigit():
@@ -285,7 +308,7 @@ def extract_season(text: str):
             return season_number
 
     for p in season_partten:
-        if p != r'第[\d一二三四五六七八九零]({1,2})季':
+        if p != r'第([\d一二三四五六七八九零]{1,2})(季|部分|部)':
             match = re.search(p, text)
             if match:
                 return int(match.group(1))
@@ -306,7 +329,8 @@ def remove_code(s: str) -> str:
     return s
 
 
-def remove_tag(s: str, skip=False):
+def remove_tag(title: str, skip=False):
+    s = title
     if skip:
         # 创建一个字典来追踪每种括号的匹配次数
         counts = {pattern: 0 for pattern in bracket_patterns}
@@ -327,6 +351,11 @@ def remove_tag(s: str, skip=False):
         # 不启用跳过规则，正常删除所有匹配项
         for pattern in bracket_patterns:
             s = re.sub(pattern, '', s)
+
+    remove_tag_s = s.strip()
+    print(f'【移除标签】：{remove_tag_s}')
+    if not remove_tag_s:
+        s = clean_title_case_insensitive(title)
 
     return s.strip()
 
@@ -445,6 +474,7 @@ def get_tv_season_info(tv: Dict) -> List[Dict]:
 
 
 def process_sub(
+    itme_path_main_name: str,
     item_repeat: Optional[List[str]],
     item_path: Path,
     work_path: Path,
@@ -460,6 +490,9 @@ def process_sub(
     item_name_l = item_name_remove.lower()
     item_suffix = item_path.suffix.lower()
 
+    n_item_name_l = item_name.replace(itme_path_main_name, '').lower()
+    print(f'移去主要内容后的文件名Lower：{n_item_name_l}')
+
     for ignore_dir in IGNORE_DIR:
         if ignore_dir in item_path.name:
             print(f'忽略文件夹：{item_path.name}')
@@ -471,7 +504,7 @@ def process_sub(
                 break
         else:
             for ex in EXTRA_TAG:
-                if re.search(rf'{ex.lower()}[\d]{{0,3}}', item_name_l):
+                if re.search(rf'{ex.lower()}', n_item_name_l):
                     t = work_path / 'extra'
                     R[item_path] = t / item_name
                     break
@@ -561,24 +594,28 @@ def process_path(path: Path, R: Dict[Path, Path]):
         name, tv_info = get_tv_info(rtpath_name)
         print(f'剧集名称: {name}')
         if IS_ANIME:
-            search_result = jikan.search(
-                'anime',
-                rtpath_name,
-                page=1,
-            )
-            for i in search_result['data']:
-                if i['type'] == 'Anime':
-                    data = i
-                    break
-            else:
+            if not name:
+                print('【TMDB未搜索到】转为MyAnimeList搜索！')
+                search_result = jikan.search(
+                    'anime',
+                    rtpath_name,
+                    page=1,
+                )
                 for i in search_result['data']:
-                    if i['type'] == 'TV':
+                    if i['type'] == 'Anime':
                         data = i
                         break
                 else:
-                    data = search_result['data'][0]
-            titles = data['titles']
-            print(f'【MyAnimeList】【识别结果】: {titles}')
+                    for i in search_result['data']:
+                        if i['type'] == 'TV':
+                            data = i
+                            break
+                    else:
+                        data = search_result['data'][0]
+                titles = data['titles']
+                print(f'【MyAnimeList】【识别结果】: {titles}')
+            else:
+                titles = None
             _WORK_PATH = ANIME_PATH
         else:
             titles = [{'type': 'Default', 'title': name}]
@@ -628,14 +665,34 @@ def process_path(path: Path, R: Dict[Path, Path]):
                     print(f'【提取信息季号】:{int_season}')
                     int_rtpath_name = extract_season(path.name)
                     print(f'【提取标题季号】:{int_rtpath_name}')
-                    if int_season == int_rtpath_name:
-                        season_id = int_rtpath_name
-                        break
+                    season_id = int_rtpath_name
+                    break
 
                 # 如果不是Season1的情况下，sname处于路径之中，则直接跳过
                 if not (sname.strip().startswith('Season') and '1' in sname):
                     if sname in path.name:
                         break
+
+                    if not titles:
+                        print('【SEASON】【TMDB未搜索到】转为MyAnimeList搜索！')
+                        search_result = jikan.search(
+                            'anime',
+                            rtpath_name,
+                            page=1,
+                        )
+                        for i in search_result['data']:
+                            if i['type'] == 'Anime':
+                                data = i
+                                break
+                        else:
+                            for i in search_result['data']:
+                                if i['type'] == 'TV':
+                                    data = i
+                                    break
+                            else:
+                                data = search_result['data'][0]
+                        titles = data['titles']
+                        print(f'【MyAnimeList】【识别结果】: {titles}')
 
                     # 或者计算相似度
                     for title in titles:
@@ -683,13 +740,28 @@ def process_path(path: Path, R: Dict[Path, Path]):
 
             print(path)
             repeat = find_unique_parts_in_videos(path)
+            itme_name = remove_tag(rtpath_name).strip('!')
             for item_path in path.iterdir():
                 if item_path.is_dir():
                     repeat = find_unique_parts_in_videos(item_path)
                     for sub_item in item_path.iterdir():
-                        process_sub(repeat, sub_item, work_path, R, season_id)
+                        process_sub(
+                            itme_name,
+                            repeat,
+                            sub_item,
+                            work_path,
+                            R,
+                            season_id,
+                        )
                 else:
-                    process_sub(repeat, item_path, work_path, R, season_id)
+                    process_sub(
+                        itme_name,
+                        repeat,
+                        item_path,
+                        work_path,
+                        R,
+                        season_id,
+                    )
 
     trans_file(R)
     R.clear()
