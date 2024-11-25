@@ -107,5 +107,5 @@
 
 - 如果本插件对你有帮助，不要忘了点个Star~
 - 本项目仅供学习使用，请勿用于商业用途
-- [爱发电](https://afdian.net/@KimigaiiWuyi)
+- [爱发电](https://afdian.com/a/KimigaiiWuyi)
 - [GPL-3.0 License](https://github.com/KimigaiiWuyi/Bangumi_Auto_Rename/blob/main/LICENSE) ©[@KimigaiiWuyi](https://github.com/KimigaiiWuyi)
