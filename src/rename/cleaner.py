@@ -1,3 +1,4 @@
+from operator import le
 import re
 import difflib
 from pathlib import Path
@@ -95,15 +96,20 @@ def remove_tag(title: str, skip=False):
 
     remove_tag_s = s.strip()
     logger.info(f'[移除标签工具] {remove_tag_s}')
-    if not remove_tag_s:
-        s = _clean_title_case_insensitive(title)
+    #if not remove_tag_s:
+    #    s = _clean_title_case_insensitive(title)
 
     return s.strip()
 
 
+#def remove_hash(filename):
+#    match1 = re.match(r'\[[a-f0-9]{8}\]',filename)
+#    match2 = re.match(r'\[[A-F0-9]{8}\]',filename)
+
+
 def divide_by_year(filename: str) -> Tuple[str, int]:
     '''
-    该步骤将文件名中，按照年份分割，并提取年份前面的内容。
+    该步骤将文件名中，按照 年份 分割，并提取年份前面的内容。
 
     Shangri / 香格里拉.2022
 
@@ -119,6 +125,19 @@ def divide_by_year(filename: str) -> Tuple[str, int]:
     else:
         return filename, 0
 
+def divide_by_season(filename: str) -> Tuple[str, int]:
+    '''
+    该步骤将文件名中，按照 季度 分割
+    Shangri / 香格里拉.S01
+    将会变为
+    Shangri / 香格里拉.
+    '''
+    res = re.findall(r'\bS\d{2}\b', filename)
+    if len(res) == 1:
+        name = filename.split(res[0])
+        return name[0], int(res[0][1:])
+    else:
+        return filename, -1
 
 def remove_season(s: str):
     '''
@@ -229,7 +248,7 @@ def find_common_substrings_in_all(
     return final_common_substrings
 
 
-def find_unique_parts_in_videos(directory: Path):
+def find_common_parts_in_videos(directory: Path):
     '''
     用于提取某个路径中所有文件的公共相似部分
     '''
@@ -248,9 +267,14 @@ def find_unique_parts_in_videos(directory: Path):
 
     return common_parts
 
-
+LEFT_BRACKET = ['{','(','[']
+RIGHT_BRACKET = ['}',')',']']
 def remove_similar_part(common_parts: List[str], filename: str):
     for common_part in common_parts:
+        if common_part[0] in RIGHT_BRACKET:
+            common_part = common_part[1:]
+        if common_part[-1] in LEFT_BRACKET:
+            common_part = common_part[:-1]
         if len(common_part) > 3:  # 确保只移除长度大于3的部分
             pattern = re.escape(common_part)
             filename = re.sub(pattern, '', filename).strip()

@@ -1,7 +1,14 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\bar",
+    "\\src",
+    "\\src\\config",
+    "\\src\\element",
+    "\\src\\pages",
+    "\\src\\rename",
+    "\\src\\utils"
   ],
-  "SelectedNode": "\\D:\\Workspace\\bangumi-auto-rename",
+  "SelectedNode": "\\bar\\bar.py",
   "PreviewInSolutionExplorer": false
 }

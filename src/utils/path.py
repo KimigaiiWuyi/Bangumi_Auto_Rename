@@ -10,6 +10,7 @@ RECORD_PATH = DATA_PATH / 'record'
 TASK_PATH = DATA_PATH / 'task'
 
 log_path = LOG_PATH / 'BAR.log'
+
 for i in [DATA_PATH, LOG_PATH, RECORD_PATH, TASK_PATH]:
     if not i.exists():
         i.mkdir(parents=True)
