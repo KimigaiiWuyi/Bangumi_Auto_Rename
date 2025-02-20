@@ -16,7 +16,7 @@ from .utils import (
     bracket_patterns,
 )
 
-
+# 删不太干净，并且当有多组括号留下时直接删掉首尾括号更寄，故暂时弃用
 def _clean_title_case_insensitive(title: str):
     # 将关键词和标题转换为小写进行匹配
     lower_keywords = [kw.lower() for kw in keywords]

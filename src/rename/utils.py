@@ -78,6 +78,7 @@ EXTRA_TAG = [
     'NCOP',
     'NCED',
     'creditless',
+    'Yokoku',
 ]
 S0_TAG = [
     r'OVA',

@@ -29,7 +29,29 @@ class ConfigPage(ui.dialog):
                             # 配置标签
                             label = CN_MAP.get(cn, cn)
                             ui.label(label).style('min-width: 120px')
-                            if cn != 'mode':
+                            if cn == 'mode':
+                                tg = RedToogle(
+                                    ['链接', '复制', '剪切'],
+                                    value=cm.get_config(cn),
+                                    on_change=lambda e, c=cn: self._change(
+                                        c,
+                                        e.value,
+                                    ),
+                                )
+                                tg.style('font-size: 10px')
+                                tg.classes('flex no-wrap w-full')
+                            elif cn == 'server_type':
+                                tg = RedToogle(
+                                    ['emby', 'jellyfin'],
+                                    value=cm.get_config(cn),
+                                    on_change=lambda e, c=cn: self._change(
+                                        c,
+                                        e.value,
+                                    ),
+                                )
+                                tg.style('font-size: 10px')
+                                tg.classes('flex no-wrap w-full')
+                            else:
                                 ui.input(
                                     value=cm.get_config(cn),
                                     on_change=lambda e, c=cn: self._change(
@@ -42,17 +64,6 @@ class ConfigPage(ui.dialog):
                                     self.config,
                                     cn,
                                 )
-                            else:
-                                tg = RedToogle(
-                                    ['链接', '复制', '剪切'],
-                                    value=cm.get_config(cn),
-                                    on_change=lambda e, c=cn: self._change(
-                                        c,
-                                        e.value,
-                                    ),
-                                )
-                                tg.style('font-size: 10px')
-                                tg.classes('flex no-wrap w-full')
 
                             if cn.endswith('path'):
                                 RedButton(
