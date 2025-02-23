@@ -1,3 +1,4 @@
+from itertools import filterfalse
 import json
 from typing import Any, Dict
 
@@ -11,6 +12,8 @@ CONFIG_DEFAULT = {
     'anime_movie_path': '',
     'mode': '链接',
     'docker_mnt': '/media',
+    'server_type': 'jellyfin',
+    'all_in_one': False,
 }
 
 CN_MAP = {
@@ -21,6 +24,9 @@ CN_MAP = {
     'anime_movie_path': '🎬 动漫电影路径',
     'mode': '💿 重命名模式',
     'docker_mnt': '📁 Docker挂载路径',
+    'server_type': '🖥️服务端类型',
+
+    #'enable_record': '启用文件处理记录'
 }
 
 

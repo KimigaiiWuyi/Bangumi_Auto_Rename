@@ -1,0 +1,110 @@
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>62aa0a7a-2464-4b5a-bfe3-8aed9a31b3a9</ProjectGuid>
+    <ProjectHome>.</ProjectHome>
+    <StartupFile>start.py</StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>bangumi-auto-rename</Name>
+    <RootNamespace>bangumi-auto-rename</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src\component\local_file_picker.py" />
+    <Compile Include="src\config\config_manager.py" />
+    <Compile Include="src\element\color.py" />
+    <Compile Include="src\element\red.py" />
+    <Compile Include="src\exception.py" />
+    <Compile Include="src\logger.py" />
+    <Compile Include="src\main_page.py" />
+    <Compile Include="src\models.py" />
+    <Compile Include="src\pages\add_task_page.py" />
+    <Compile Include="src\pages\config_page.py" />
+    <Compile Include="src\pages\data_table_page.py" />
+    <Compile Include="src\pages\download_log.py" />
+    <Compile Include="src\pages\edit_page.py" />
+    <Compile Include="src\rename\cleaner.py" />
+    <Compile Include="src\rename\get_info.py" />
+    <Compile Include="src\rename\process.py" />
+    <Compile Include="src\rename\trans.py" />
+    <Compile Include="src\rename\utils.py" />
+    <Compile Include="src\start.py" />
+    <Compile Include="src\utils\path.py" />
+    <Compile Include="src\utils\utils.py" />
+    <Compile Include="src\web.py" />
+    <Compile Include="src\__init__.py" />
+    <Compile Include="src\__version__.py" />
+    <Compile Include="start.py" />
+    <Compile Include="tests\__init__.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="data\" />
+    <Folder Include="data\log\" />
+    <Folder Include="data\record\" />
+    <Folder Include="data\task\" />
+    <Folder Include="src\" />
+    <Folder Include="src\component\" />
+    <Folder Include="src\component\__pycache__\" />
+    <Folder Include="src\config\" />
+    <Folder Include="src\config\__pycache__\" />
+    <Folder Include="src\element\" />
+    <Folder Include="src\element\__pycache__\" />
+    <Folder Include="src\images\" />
+    <Folder Include="src\pages\" />
+    <Folder Include="src\pages\__pycache__\" />
+    <Folder Include="src\rename\" />
+    <Folder Include="src\rename\__pycache__\" />
+    <Folder Include="src\utils\" />
+    <Folder Include="src\utils\__pycache__\" />
+    <Folder Include="src\__pycache__\" />
+    <Folder Include="tests\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="data\config.json" />
+    <Content Include="data\log\BAR.log" />
+    <Content Include="src\component\__pycache__\local_file_picker.cpython-311.pyc" />
+    <Content Include="src\config\__pycache__\config_manager.cpython-311.pyc" />
+    <Content Include="src\element\__pycache__\color.cpython-311.pyc" />
+    <Content Include="src\element\__pycache__\red.cpython-311.pyc" />
+    <Content Include="src\images\ICON.png" />
+    <Content Include="src\pages\__pycache__\add_task_page.cpython-311.pyc" />
+    <Content Include="src\pages\__pycache__\config_page.cpython-311.pyc" />
+    <Content Include="src\pages\__pycache__\data_table_page.cpython-311.pyc" />
+    <Content Include="src\pages\__pycache__\download_log.cpython-311.pyc" />
+    <Content Include="src\pages\__pycache__\edit_page.cpython-311.pyc" />
+    <Content Include="src\rename\__pycache__\cleaner.cpython-311.pyc" />
+    <Content Include="src\rename\__pycache__\get_info.cpython-311.pyc" />
+    <Content Include="src\rename\__pycache__\process.cpython-311.pyc" />
+    <Content Include="src\rename\__pycache__\trans.cpython-311.pyc" />
+    <Content Include="src\rename\__pycache__\utils.cpython-311.pyc" />
+    <Content Include="src\utils\__pycache__\path.cpython-311.pyc" />
+    <Content Include="src\utils\__pycache__\utils.cpython-311.pyc" />
+    <Content Include="src\__pycache__\logger.cpython-311.pyc" />
+    <Content Include="src\__pycache__\main_page.cpython-311.pyc" />
+    <Content Include="src\__pycache__\models.cpython-311.pyc" />
+    <Content Include="src\__pycache__\start.cpython-311.pyc" />
+    <Content Include="src\__pycache__\web.cpython-311.pyc" />
+    <Content Include="src\__pycache__\__init__.cpython-311.pyc" />
+    <Content Include="src\__pycache__\__version__.cpython-311.pyc" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>

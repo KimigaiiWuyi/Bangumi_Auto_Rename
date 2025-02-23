@@ -170,3 +170,9 @@ Bangumi_Auto_Rename.onefile-build
 
 config.json
 data
+
+
+# vs file
+/.vs/
+*.pyproj
+*.sln

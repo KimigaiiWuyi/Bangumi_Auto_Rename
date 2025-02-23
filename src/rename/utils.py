@@ -1,5 +1,57 @@
-IGNORE_DIR = ['cd', 'scan']
+PATTERN = r'[a-zA-Z\u4e00-\u9fa5]'
+IGNORE_DIR = ['cd', 'cds', 'scan', 'scans']
 IGNORE_SUFFIX = ['.rar', '.zip', '.7z', '.webp', '.jpg', '.png']
+
+
+'''
+Jellyfin supported extra folder types are:
+    behind the scenes
+    deleted scenes
+    interviews
+    scenes
+    samples
+    shorts
+    featurettes
+    clips
+    other - Generic catch all for extras of an unknown type.
+    extras - Generic catch all for extras of an unknown type.
+    trailers
+'''
+
+JELLYFIN_SUPPORT_EXTRA_NAME_DICT = {
+    'scene': 'scenes',
+    'scenes': 'scenes',
+    'interview': 'interviews',
+    'interviews': 'interviews',
+    'iv': 'interviews',
+    'sample': 'samples',
+    'samples': 'samples',
+    'short': 'shorts',
+    'shorts': 'shorts',
+    'featurette': 'featurettes',
+    'featurettes': 'featurettes',
+    'clip': 'clips',
+    'clips': 'clips',
+    'trailer': 'trailers',
+    'trailers': 'trailers',
+    'Preview': 'trailers',
+    'CM': 'trailers',
+    'SPOT': 'trailers',
+    'PV': 'trailers',
+    'Teaser': 'trailers',
+}
+JELLYFIN_UNSUPPORT_EXTRA_TAG = [
+    'other',
+    'others',
+    'extra',
+    'extras',
+]
+JELLYFIN_IGNORE_TAG = [
+    'scan',
+    'scans',
+    'font',
+    'fonts',
+]
 EXTRA_TAG = [
     'NCOP',
     'NCED',
@@ -21,6 +73,10 @@ EXTRA_TAG = [
     '预告',
     '特典',
     '映像',
+    'NCOP',
+    'NCED',
+    'creditless',
+    'Yokoku',
 ]
 S0_TAG = [
     r'OVA',
@@ -35,7 +91,6 @@ S0_TAG = [
 ]
 VIDEO_SUFFIX = [
     '.mp4',
-    '.mka',
     '.mkv',
     '.avi',
     '.wmv',
@@ -101,7 +156,7 @@ season_partten = [
     r'第([\d一二三四五六七八九零]{1,2})(季|部分|部)',
     r'([\d]{1,2})nd Season',
     r'Season ([\d]{1,2})',
-    r' ([\d]{1,2})',
+    # r' ([\d]{1,2})',
     r'(First|Second|Third|Fourth|Fifth) Season',
 ]
 episode_partten = [
