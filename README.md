@@ -115,16 +115,16 @@ curl -d "path="%F"&tag="%G"" http://127.0.0.1:5999/sendTask -f
 ```
 anime1
 ├───CDs
-│	└somethings
+│   └somethings
 ├───Scans
-│	└somethings
+│   └somethings
 ├───SPs
-│	├───xxx[IV01].mkv
-│	├───xxx[IV02].mkv
-│	├───xxx[PV01].mkv
-│	├───xxx[PV02].mkv
-│	├───xxx[OVA01].mkv
-│	└───xxx[OVA02].mkv
+│   ├───xxx[IV01].mkv
+│   ├───xxx[IV02].mkv
+│   ├───xxx[PV01].mkv
+│   ├───xxx[PV02].mkv
+│   ├───xxx[OVA01].mkv
+│   └───xxx[OVA02].mkv
 ├───xxx[01].mkv
 └───xxx[02].mkv
 ```
@@ -137,18 +137,18 @@ Jellyfin 模式：
 ```
 动画1 （20xx）
 ├───Season 00
-│	├───S00E01 - xxx[OVA01].mkv
-│	└───S00E02 - xxx[OVA02].mkv
+│   ├───S00E01 - xxx[OVA01].mkv
+│   └───S00E02 - xxx[OVA02].mkv
 └───Season 01
-	├───extras
-	│	├───CDs
-	│	├───xxx[PV01].mkv
-	│	└───xxx[PV02].mkv
-	├───interviews
-	│	├───xxx[IV01].mkv
-	│	└───xxx[IV02].mkv
-	├───S01E01 - xxx[01].mkv
-	└───S01E02 - xxx[02].mkv
+    ├───extras
+    │   ├───CDs
+    │   ├───xxx[PV01].mkv
+    │   └───xxx[PV02].mkv
+    ├───interviews
+    │   ├───xxx[IV01].mkv
+    │   └───xxx[IV02].mkv
+    ├───S01E01 - xxx[01].mkv
+    └───S01E02 - xxx[02].mkv
 
 ```
 
@@ -157,16 +157,16 @@ Emby 模式：
 ```
 动画1 （20xx）
 ├───extra
-│	├───xxx[IV01].mkv
-│	├───xxx[IV02].mkv
-│	├───xxx[PV01].mkv
-│	└───xxx[PV02].mkv
+│   ├───xxx[IV01].mkv
+│   ├───xxx[IV02].mkv
+│   ├───xxx[PV01].mkv
+│   └───xxx[PV02].mkv
 ├───Season 00
-│	├───S00E01 - xxx[OVA01].mkv
-│	└───S00E02 - xxx[OVA02].mkv
+│   ├───S00E01 - xxx[OVA01].mkv
+│   └───S00E02 - xxx[OVA02].mkv
 └───Season 01
-	├───S01E01 - xxx[01].mkv
-	└───S01E02 - xxx[02].mkv
+    ├───S01E01 - xxx[01].mkv
+    └───S01E02 - xxx[02].mkv
 
 ```
 
@@ -179,11 +179,11 @@ Emby 模式：
 ```
 folder
 ├───anime1
-│	├───CDs
-│	├───Scans
-│	├───SPs
-│	├───xxx[01].mkv
-│	└───xxx[02].mkv
+│   ├───CDs
+│   ├───Scans
+│   ├───SPs
+│   ├───xxx[01].mkv
+│   └───xxx[02].mkv
 └───series1
     └───anime2
         ├───CDs
@@ -199,17 +199,17 @@ folder
 动画1 （20xx）
 ├───Season 00
 └───Season 01
-	├───extras
-	│	└───CDs
-	├───S01E01 - xxx[01].mkv
-	└───S01E02 - xxx[02].mkv
+    ├───extras
+    │   └───CDs
+    ├───S01E01 - xxx[01].mkv
+    └───S01E02 - xxx[02].mkv
 动画2 （20xx）
 ├───Season 00
 └───Season 01
-	├───extras
-	│	└───CDs
-	├───S01E01 - yyy[01].mkv
-	└───S01E02 - yyy[02].mkv
+    ├───extras
+    │   └───CDs
+    ├───S01E01 - yyy[01].mkv
+    └───S01E02 - yyy[02].mkv
 ```
 
 其中对子项的处理 参见普通模式。
