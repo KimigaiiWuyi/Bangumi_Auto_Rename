@@ -1,3 +1,8 @@
+from pathlib import Path
+
+from typing import Dict
+
+
 PATTERN = r'[a-zA-Z\u4e00-\u9fa5]'
 IGNORE_DIR = ['cd', 'cds', 'scan', 'scans']
 IGNORE_SUFFIX = ['.rar', '.zip', '.7z', '.webp', '.jpg', '.png']
@@ -192,3 +197,26 @@ code_partten = [
     r'10bit',
     r'8bit',
 ]
+
+class MediaInfo:
+    def __init__(
+        self,
+        _path: Path,
+        _name: str = None,
+        _season: int = None,
+        _is_anime: bool = None,
+        _is_movie: bool = None,
+        _rtpath_name: str = None,
+        _year: int = None,
+        _info: Dict = None,
+    ):
+        self.path = _path
+        self.name = _name
+        self.season = _season
+        self.is_anime = _is_anime
+        self.is_movie = _is_movie
+        self.rtpath_name = _rtpath_name,
+        self.year = _year,
+        self.info = _info,
+
+        

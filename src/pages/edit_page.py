@@ -46,7 +46,8 @@ class EditPage(ui.dialog):
         _s = 'width: 40%; flex-wrap: nowrap;'
         task_data = get_task(uuid)
         if task_data is None:
-            return notify('任务数据不存在！')
+            notify('任务数据不存在！')
+            return
 
         self.data = SimpleNamespace(**task_data)
         with self, ui.card().style(_s).classes('flex'):

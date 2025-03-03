@@ -104,6 +104,117 @@ curl -d "path="%F"&tag="%G"" http://127.0.0.1:5999/sendTask -f
 - 进入文件夹内，`cd Bangumi_Auto_Rename`
 - 执行`git pull`
 
+## 文件结构
+
+### 普通模式（默认）
+
+我们假定在 WebUI 中选择的文件夹名称为 anime1
+
+#### 输入文件结构
+
+```
+anime1
+├───CDs
+│	└somethings
+├───Scans
+│	└somethings
+├───SPs
+│	├───xxx[IV01].mkv
+│	├───xxx[IV02].mkv
+│	├───xxx[PV01].mkv
+│	├───xxx[PV02].mkv
+│	├───xxx[OVA01].mkv
+│	└───xxx[OVA02].mkv
+├───xxx[01].mkv
+└───xxx[02].mkv
+```
+或 单视频文件
+
+#### 输出文件结构
+
+Jellyfin 模式：
+
+```
+动画1 （20xx）
+├───Season 00
+│	├───S00E01 - xxx[OVA01].mkv
+│	└───S00E02 - xxx[OVA02].mkv
+└───Season 01
+	├───extras
+	│	├───CDs
+	│	├───xxx[PV01].mkv
+	│	└───xxx[PV02].mkv
+	├───interviews
+	│	├───xxx[IV01].mkv
+	│	└───xxx[IV02].mkv
+	├───S01E01 - xxx[01].mkv
+	└───S01E02 - xxx[02].mkv
+
+```
+
+Emby 模式：
+
+```
+动画1 （20xx）
+├───extra
+│	├───xxx[IV01].mkv
+│	├───xxx[IV02].mkv
+│	├───xxx[PV01].mkv
+│	└───xxx[PV02].mkv
+├───Season 00
+│	├───S00E01 - xxx[OVA01].mkv
+│	└───S00E02 - xxx[OVA02].mkv
+└───Season 01
+	├───S01E01 - xxx[01].mkv
+	└───S01E02 - xxx[02].mkv
+
+```
+
+### All in One 模式
+
+我们假定在 WebUI 中选择的文件夹名称为 folder
+
+#### 输入文件结构
+
+```
+folder
+├───anime1
+│	├───CDs
+│	├───Scans
+│	├───SPs
+│	├───xxx[01].mkv
+│	└───xxx[02].mkv
+└───series1
+    └───anime2
+        ├───CDs
+        ├───Scans
+        ├───SPs
+        ├───yyy[01].mkv
+        └───yyy[02].mkv
+```
+
+#### 输出文件结构
+
+```
+动画1 （20xx）
+├───Season 00
+└───Season 01
+	├───extras
+	│	└───CDs
+	├───S01E01 - xxx[01].mkv
+	└───S01E02 - xxx[02].mkv
+动画2 （20xx）
+├───Season 00
+└───Season 01
+	├───extras
+	│	└───CDs
+	├───S01E01 - yyy[01].mkv
+	└───S01E02 - yyy[02].mkv
+```
+
+其中对子项的处理 参见普通模式。
+整体而言，All in One 模式增加了对动画文件夹的递归查找，同时移除单文件支持。
+
 ## 需要注意的
 
 - 该程序依靠**TMDB API**（因为Emby也是一样的，可以保证精准度），因此对**网络环境**有一定要求！
