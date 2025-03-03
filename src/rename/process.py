@@ -705,7 +705,9 @@ class Rename:
                             )
                         else:
                             link_subitems(
-                                work_path / 'extra' / item_path.name, self.prelink
+                                item_path,
+                                work_path / 'extra' / item_path.name,
+                                self.prelink,
                             )
             else:  # cerr
                 logger.warn('进入了意料之外的分支')

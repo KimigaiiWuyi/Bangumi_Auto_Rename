@@ -176,3 +176,6 @@ data
 /.vs/
 *.pyproj
 *.sln
+
+# debug file
+/tmp
