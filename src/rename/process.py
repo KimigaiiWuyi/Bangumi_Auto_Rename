@@ -16,9 +16,7 @@ from .get_info import Search
 from ..utils.path import TASK_PATH
 from ..config.config_manager import cm
 from .utils import (
-    S0_TAG,
     PATTERN,
-    EXTRA_TAG,
     IGNORE_DIR,
     VIDEO_SUFFIX,
     IGNORE_SUFFIX,
@@ -27,14 +25,10 @@ from .utils import (
     JELLYFIN_SUPPORT_EXTRA_NAME_DICT,
 )
 from .cleaner import (
-    remove_tag,
     remove_code,
     remove_season,
-    divide_by_year,
     extract_number,
     extract_season,
-    remove_episode,
-    divide_by_season,
     extract_base_num,
     match_and_extract,
     remove_similar_part,
@@ -47,9 +41,6 @@ jikan = Jikan()
 
 
 RECURSION_LEVEL = 0  # 记录递归层数，方便日志输出
-
-
-
 
 
 # 递归的将一个文件夹中的子文件夹链接到一个地方(预处理，塞到result里)
@@ -98,7 +89,6 @@ def process_subitems(
 
     logger.info(f'[特典识别] 退出 {src_path.__str__()}')
 
-
 class Rename:
     def __init__(self, _root_path=None):
         self.BANGUMI_PATH = Path(cm.get_config('bangumi_path'))
@@ -118,9 +108,7 @@ class Rename:
 
         self.search = Search()
 
-        # self.R = {}
         self.prelink = {}
-
 
 
     # 处理特典文件夹
@@ -322,206 +310,90 @@ class Rename:
     #    cus_season_id: Optional[int] = None,
     # ):
 
-    def process(
-        self,
-        path: Path,
-        _is_anime: Optional[bool] = None,
-        _is_movie: Optional[bool] = None,
-        _tuuid: Optional[str] = None,
-        cus_name: Optional[str] = None,
-        cus_season_id: Optional[int] = None,
-    ):
 
-        # 要处理两种情况
-        # 一个是传入根目录（即包含一堆番的单目录）或者是一系列番的目录、
-        # 一个是传入单目录（即单季度的番剧文件夹）
-        if path.is_file():
-            logger.warn(f'[传入目录] 指定的 {path.__str__()} 不是目录')
-            return
-
-        # 如果传入目录下有视频，说明传入的是系列目录（所以说请至少给每个动画建个文件夹啊喂）
-        for item in path.iterdir():
-            if item.is_file() and item.suffix in VIDEO_SUFFIX:
-                is_single = True
-                break
+    def _process_movie(self,media:MediaInfo):
+        if media.is_anime:
+            _WORK_PATH = self.ANIME_MOVIE_PATH
         else:
-            is_single = False
+            _WORK_PATH = self.MOVIE_PATH
 
-        # 如果是单目录，直接处理
-        if is_single:
-            logger.info('[传入目录] 传入单目录，直接处理')
-            self._process_single_folder(
-                path,
-                _is_anime,
-                _is_movie,
-                _tuuid,
-                cus_name,
-                cus_season_id,
-            )
-        # 处理二级目录
+        # 开始拆分
+        if media.info:
+            first_data = media.info['release_date']
+            first_year = first_data.split('-')[0]
+            work_path = _WORK_PATH / f'{media.name} ({first_year})'
+            # work_path.mkdir(parents=True, exist_ok=True)
+            # 链接文件（夹）
+            for item_path in media.path.iterdir():
+                if item_path.is_file():
+                    self.prelink[item_path] = (
+                        work_path / f'{media.name} - {item_path.name}'
+                    )
+                else:
+                    if self.SERVER_TYPE == 'jellyfin':
+                        link_subitems(
+                            item_path,
+                            work_path / 'others' / item_path.name,
+                            self.prelink,
+                        )
+                    else:
+                        link_subitems(
+                            item_path,
+                            work_path / 'extra' / item_path.name,
+                            self.prelink,
+                        )
+        else:  # cerr
+            logger.warn('进入了意料之外的分支')
+            return 1
+        return 0
+    
+    def _process_tvshow(self, media:MediaInfo):
+        if media.is_anime:
+            _WORK_PATH = self.ANIME_PATH
         else:
-            logger.info('[传入目录] 传入复合目录，开始递归')
-            for sub_item in path.iterdir():
-                self.process(
-                    sub_item,
-                    _is_anime,
-                    _is_movie,
-                    _tuuid,
-                    cus_name,
-                    cus_season_id,
-                )
-        return
+            _WORK_PATH = self.BANGUMI_PATH
+        # 开始重命名内部文件
+        if media.info:
+            first_data: str = media.info['first_air_date']
+            first_year = first_data.split('-')[0]
+            if media.season is None or media.season == -1:
+                matcher.get_season_id(media)
 
-    # 封装标签移除和年份，季度识别
-    def analyse_path_name(self, media_info:MediaInfo):
-        logger.info(f'[标签移除] 开始分析 {media_info.path}')
 
-        year = 0
-        season_id = -1
+            work_path = _WORK_PATH / f'{media.name} ({first_year})'
 
-        rtpath_name = remove_tag(media_info.path)
-        # 如果标签移除后啥都没有, 说明文件名也是标签的一部分
-        if not rtpath_name:
-            rtpath_name = remove_tag(media_info.path, True)
-        # 按照空白、换行符或者连字符（-）分割成列表
-        path_atri = re.split(r'[\s-]+', rtpath_name)
-        # 如果该列表大于3, 不额外处理
-        if len(path_atri) > 3:
-            # path_atri.pop(0)
-            rtpath_name = ' '.join(path_atri)
-        # 如果该列表中有多个点, 则认为是一种规范命名的文件
-        # 先用.分割之后, 按照年份分割后按照季度分割
-        if rtpath_name.count('.') >= 3:
-            rtpath_name = ' '.join(rtpath_name.split('.'))
-            rtpath_name, season_id = divide_by_season(rtpath_name)
-            rtpath_name, year = divide_by_year(rtpath_name)
-
-        rtpath_name = remove_season(rtpath_name)
-        rtpath_name = remove_episode(rtpath_name)
-        rtpath_name = rtpath_name.strip('!')
-
-        logger.info(f'[标签移除] 去除标签后: {rtpath_name}, 年份识别为： {year}')
-
-        media_info.rtpath_name = rtpath_name
-        media_info.year = year
-        media_info.season = season_id
-        
-        return rtpath_name, year, season_id
-
-    # 识别文件夹储存的是电影还是剧集, 建议传入最低级文件夹（即只包含单季度的）
-    # 重构于 _process 中 step1.5 部分
-    def analyse_path_type(
-        self,
-        media:MediaInfo,
-        # titles: Dict,
-    ):
-        '''
-        传入文件目录及相关辅助信息
-        尝试借助api进行搜索
-        返回可能的作品类型和名称
-        '''
-        logger.info(f'[识别类型] 未传入任务类型，开始判断 {media.path.name} 是否为电影！')
-        logger.info(f'[搜索剧集] 开始搜索 {media.rtpath_name} ({media.year})')
-
-        tv_name, tv_info = self.search.get_tv_info(media.rtpath_name, media.year)
-        if not tv_name and media.year != 0:
-            tv_name, tv_info = self.search.get_tv_info(media.rtpath_name, 0)
-            logger.info('[搜索剧集] 未搜索到结果, 删除year后重试')
-        logger.info(f'[搜索剧集] 搜索到的电视剧名称: {tv_name}')
-
-        logger.info(f'[搜索电影] 开始搜索 {media.rtpath_name} ({media.year})')
-        mv_name, mv_info = self.search.get_movie_info(media.rtpath_name, media.year)
-        if not mv_name and media.year != 0:
-            mv_name, mv_info = self.search.get_movie_info(media.rtpath_name, 0)
-            logger.info('[搜索电影] 未搜索到结果, 删除year后重试')
-        logger.info(f'[搜索电影] 搜索到的电影名称: {mv_name}')
-
-        # if is_anime:
-        #    if not mv_name and not tv_name:#cerr
-        #        logger.info('[搜索动画] TMDB未搜索到!转为MyAnimeList搜索！')
-        #        search_result = jikan.search(
-        #            'anime',
-        #            rtpath_name,
-        #            page=1,
-        #        )
-        #        for i in search_result['data']:
-        #            if i['type'] == 'Anime':
-        #                data = i
-        #                break
-        #        else:
-        #            for i in search_result['data']:
-        #                if i['type'] == 'TV':
-        #                    data = i
-        #                    break
-        #                else:
-        #                    data = search_result['data'][0]
-        #        titles = data['titles']
-        #        logger.info((f'[搜索动画] MyAnimeList识别结果: {titles}'))
-        # else:
-        #    titles =[{'type':'Default','title': name}]
-
-        if not tv_name and not mv_name:
-            logger.warning(f'[识别类型] 未搜索到 {media.path.name} 相关的任何结果！')
-            return None, None, None
-
-        # 根据搜索结果和文件结构进行猜测
-        rate = 0
-        if tv_name:
-            rate += 1
-        if mv_name:
-            rate -= 1
-
-        if media.path.is_file():
-            rate -= 0.5
+            logger.info(f'[处理任务] 开始对 [文件夹] {media.path.name}处理')
+            repeat = find_common_parts_in_videos(media.path)
+            for item_path in media.path.iterdir():
+                # logger.info(f'[处理任务] 处理嵌套文件夹 {item_path.name}')
+                if item_path.is_dir():
+                    # repeat_2 = find_common_parts_in_videos(item_path)
+                    # for sub_item in item_path.iterdir():
+                    self._process_extras_dir(
+                        item_path,
+                        work_path,
+                        media.season,
+                    )
+                else:
+                    self._process_single_video(
+                        item_path, repeat, work_path, media.season
+                    )
         else:
-            path_video_num = 0
-            for i in media.path.iterdir():
-                if i.is_file() and i.suffix.lower() in VIDEO_SUFFIX:
-                    path_video_num += 1
-            if path_video_num > 4:
-                rate += 0.4
-            else:
-                rate -= 0.4
+            logger.warn('进入了意料之外的分支')
+            return 1
+        return 0
 
-        season_id = extract_season(media.rtpath_name)
-        if season_id == -1:
-            rate -= 0.4
-        else:
-            rate += 0.6
-
-        if media.is_movie is None:
-            if rate < 0:
-                logger.info(f'[识别类型] {media.path.name} 可能为电影！')
-                media.name = mv_name
-                media.info = mv_info
-                return 'movie'
-            else:
-                logger.info(f'[识别类型] {media.path.name} 可能为电视剧！')
-                media.name = tv_name
-                media.info = tv_info
-                return 'tv_show'
-        else:
-            if media.is_movie:
-                logger.info(f'[识别类型] {media.path.name} 钦定为电影！')
-                media.name = mv_name
-                media.info = mv_info
-                return 'movie'
-            else:
-                logger.info(f'[识别类型] {media.path.name} 钦定为电视剧！')
-                media.name = tv_name
-                media.info = tv_info
-                return 'tv_show'
 
     # 处理单季度文件夹
     # 重构于 _process
     def _process_season(
         self,
         path: Path,
-        is_anime: Optional[bool] = None,
-        is_movie: Optional[bool] = None,
+        _is_anime: Optional[bool] = None,
+        _is_movie: Optional[bool] = None,
         _tuuid: Optional[str] = None,
-        cus_name: Optional[str] = None,
-        cus_season_id: Optional[int] = -1,
+        _cus_name: Optional[str] = None,
+        _cus_season_id: Optional[int] = None,
     ):
         if _tuuid:
             _uuid = _tuuid
@@ -533,13 +405,15 @@ class Rename:
                 _uuid,
                 '你还没有配置TMDB的Key！任务失败！请先前往配置界面！',
                 path,
-                is_anime,
-                is_movie,
+                _is_anime,
+                _is_movie,
             )
 
-        ######################### [Step.0] 开始处理 #########################
+        ######################### [Step.0] 初始化 #########################
         logger.info(f'[处理任务] 开始处理单文件夹"{path.name}"')
-        media = MediaInfo(path,_name = cus_name,_season = cus_season_id)
+        media = MediaInfo(path, _season = _cus_season_id)
+        media.is_anime = _is_anime
+        media.is_movie = _is_movie
 
         # 统计该文件夹下视频文件数量
         path_video_num = 0
@@ -550,126 +424,59 @@ class Rename:
         else:
             path_video_num = 1
 
-        ######################### [Step.1] #########################
+        ######################### [Step.1] 找信息 #########################
 
         # 先移除无用的标签, 方便之后搜索
         # rtpath_name, year, season_id is returned.
-        self.analyse_path_name(media)
+        matcher.analyse_path_name(media)
 
         # 【特殊改】
-        if cus_name:
-            media.rtpath_name = cus_name
+        if _cus_name is not None:
+            media.rtpath_name = _cus_name
+                    # 指定季度，直接覆盖
 
-        # 【Step.1.5】
+        path_type = matcher.analyse_path_type(media, self.search)
+        tid = extract_season(media.rtpath_name)
+        if tid != -1:
+            media.season = tid
+        
         # 判断类型是否为电影并获取搜索结果
-        path_type = self.analyse_path_type(media)
         if path_type is None:
             logger.warning(f'[处理任务] 未搜索到相关信息, 跳过 {media.rtpath_name}')
             return self.error_reply(  # cerr
                 _uuid,
                 f'[TMDB] 未搜索到相关信息, 跳过 {media.rtpath_name}',
                 path,
-                is_anime,
-                is_movie,
+                media.is_anime,
+                media.is_movie,
             )
-        elif path_type == 'movie':
-            is_movie = True
-        elif path_type == 'tv_show':
-            is_movie = False
 
-        tid = extract_season(media.rtpath_name)
-        if tid != -1:
-            media.season = tid
 
-        # 【Step.2】
+        ######################### [Step.2] 链文件 #########################
         # 如果是电影
         if path_type == 'movie':
-            if is_anime:
-                _WORK_PATH = self.ANIME_MOVIE_PATH
-            else:
-                _WORK_PATH = self.MOVIE_PATH
-
-            # 开始拆分
-            if media.info:
-                first_data = media.info['release_date']
-                first_year = first_data.split('-')[0]
-                work_path = _WORK_PATH / f'{media.name} ({first_year})'
-                # work_path.mkdir(parents=True, exist_ok=True)
-                # 链接文件（夹）
-                for item_path in path.iterdir():
-                    if item_path.is_file():
-                        self.prelink[item_path] = (
-                            work_path / f'{media.name} - {item_path.name}'
-                        )
-                    else:
-                        if self.SERVER_TYPE == 'jellyfin':
-                            link_subitems(
-                                item_path,
-                                work_path / 'others' / item_path.name,
-                                self.prelink,
-                            )
-                        else:
-                            link_subitems(
-                                item_path,
-                                work_path / 'extra' / item_path.name,
-                                self.prelink,
-                            )
-            else:  # cerr
-                logger.warn('进入了意料之外的分支')
+            if self._process_movie(media):
                 return self.error_reply(
-                    _uuid,
-                    '进入了意料之外的分支',
-                    path,
-                    is_anime,
-                    is_movie,
+                _uuid,
+                '进入了意料之外的分支',
+                path,
+                media.is_anime,
+                media.is_movie,
                 )
         # 如果是剧集类型
         else:
-            if is_anime:
-                _WORK_PATH = self.ANIME_PATH
-            else:
-                _WORK_PATH = self.BANGUMI_PATH
-            # 开始重命名内部文件
-            if media.info:
-                first_data: str = media.info['first_air_date']
-                first_year = first_data.split('-')[0]
-                matcher.get_season_id(media)
-
-                # 指定季度，直接覆盖
-                if cus_season_id != -1 and cus_season_id is not None:  # cerr
-                    media.season = int(cus_season_id)
-
-                work_path = _WORK_PATH / f'{media.name} ({first_year})'
-
-                logger.info(f'[处理任务] 开始对 [文件夹] {path.name}处理')
-                repeat = find_common_parts_in_videos(path)
-                for item_path in path.iterdir():
-                    # logger.info(f'[处理任务] 处理嵌套文件夹 {item_path.name}')
-                    if item_path.is_dir():
-                        # repeat_2 = find_common_parts_in_videos(item_path)
-                        # for sub_item in item_path.iterdir():
-                        self._process_extras_dir(
-                            item_path,
-                            work_path,
-                            media.season,
-                        )
-                    else:
-                        self._process_single_video(
-                            item_path, repeat, work_path, media.season
-                        )
-            else:
-                logger.warn('进入了意料之外的分支')
-                return self.error_reply(  # cerr
-                    _uuid,
-                    '进入了意料之外的分支',
-                    path,
-                    is_anime,
-                    is_movie,
+            if self._process_tvshow(media):
+                return self.error_reply(
+                _uuid,
+                '进入了意料之外的分支',
+                path,
+                media.is_anime,
+                media.is_movie,
                 )
         task_path = TASK_PATH / f'{_uuid}.json'
         task_data = {
             'path': str(path),
-            'is_anime': is_anime,
+            'is_anime': media.is_anime,
             'name': media.name,
             'season_id': media.season,
             'uuid': str(_uuid),
@@ -682,8 +489,8 @@ class Rename:
                 _uuid,
                 trans_result,
                 path,
-                is_anime,
-                is_movie,
+                media.is_anime,
+                media.is_movie,
                 media.name,
                 media.season,
             )
@@ -714,3 +521,64 @@ class Rename:
         with open(task_path, 'w', encoding='UTF-8') as file:
             json.dump(task_data, file, indent=4, ensure_ascii=False)
         return error
+
+    def process(
+        self,
+        path: Path,
+        _is_anime: Optional[bool] = None,
+        _is_movie: Optional[bool] = None,
+        _tuuid: Optional[str] = None,
+        cus_name: Optional[str] = None,
+        cus_season_id: Optional[int] = None,
+    ):
+
+        # 要处理两种情况
+        # 一个是传入根目录（即包含一堆番的单目录）或者是一系列番的目录、
+        # 一个是传入单目录（即单季度的番剧文件夹）
+        if path.is_file():
+            logger.warn(f'[传入目录] 指定的 {path.__str__()} 不是目录')
+            return
+
+        # 如果传入目录下有视频，说明传入的是系列目录（所以说请至少给每个动画建个文件夹啊喂）
+        for item in path.iterdir():
+            if item.is_file() and item.suffix in VIDEO_SUFFIX:
+                is_single = True
+                break
+        else:
+            is_single = False
+
+        # 如果是单目录，直接处理
+        if is_single:
+            logger.info('[传入目录] 传入单目录，直接处理')
+            self._process_season(
+                path,
+                _is_anime,
+                _is_movie,
+                _tuuid,
+                cus_name,
+                cus_season_id,
+            )
+        # 处理二级目录
+        else:
+            logger.info('[传入目录] 传入复合目录，开始递归')
+            if self.ALL_IN_ONE:
+                for sub_item in path.iterdir():
+                    self.process(
+                        sub_item,
+                        _is_anime,
+                        _is_movie,
+                        _tuuid,
+                        cus_name,
+                        cus_season_id,
+                    )
+            else:
+                for sub_item in path.iterdir():
+                    self._process_season(
+                        sub_item,
+                        _is_anime,
+                        _is_movie,
+                        _tuuid,
+                        cus_name,
+                        cus_season_id,
+                    )
+        return
