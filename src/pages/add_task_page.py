@@ -58,9 +58,9 @@ async def pick_file() -> None:
         '~',
         multiple=True,
     )
-    is_anime: bool = await choose_is_anime()
     if result is None:
         return notify('取消添加任务！')
+    is_anime: bool = await choose_is_anime()
 
     for p in result:
         logger.info(f'[开始任务] 选择了 {result}')

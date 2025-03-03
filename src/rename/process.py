@@ -561,7 +561,7 @@ class Rename:
         # 处理二级目录
         else:
             logger.info('[传入目录] 传入复合目录，开始递归')
-            if self.ALL_IN_ONE:
+            if self.ALL_IN_ONE == '开启':
                 for sub_item in path.iterdir():
                     self.process(
                         sub_item,
