@@ -10,6 +10,7 @@ from . import utils
 from .utils import MediaInfo
 from ..logger import logger
 
+search = 0
 
 def match_special(name):
     for s0 in utils.S0_TAG:  # 寻找 Season00
@@ -101,12 +102,18 @@ def analyse_path_name(media:MediaInfo):
     修改 media 中的 rtpath_name, year, season_id
     仅依赖文件名剥离名称，识别年份和季度
     '''
-    dir_name = media.path.name;
+    if media.path.is_file():
+        dir_name = media.path.stem;
+    else:
+        dir_name = media.path.name;
+    rtpath_name = media.rtpath_name
     logger.info(f'[标签移除] 开始分析 {dir_name}')
     year = 0
-    season_id = -1
+    season_id = media.season
 
-    rtpath_name = cleaner.remove_tag(dir_name)
+
+    if rtpath_name is None:
+        rtpath_name = cleaner.remove_tag(dir_name)
     # 如果标签移除后啥都没有, 说明文件名也是标签的一部分
     if not rtpath_name:
         rtpath_name = cleaner.remove_tag(dir_name, True)
@@ -124,7 +131,7 @@ def analyse_path_name(media:MediaInfo):
         rtpath_name, year = cleaner.divide_by_year(rtpath_name)
 
     rtpath_name = cleaner.remove_season(rtpath_name)
-    rtpath_name = cleaner.remove_episode(rtpath_name)
+    rtpath_name = cleaner.remove_episode(rtpath_name,media.path.is_dir())
     rtpath_name = rtpath_name.strip('!')
 
     logger.info(f'[标签移除] 去除标签后: {rtpath_name}, 年份识别为： {year}')
@@ -136,9 +143,11 @@ def analyse_path_name(media:MediaInfo):
 
 # 识别文件夹储存的是电影还是剧集, 建议传入最低级文件夹（即只包含单季度的）
 # 重构于 _process 中 step1.5 部分
-def analyse_path_type(media:MediaInfo, search):
+def analyse_path_type(media:MediaInfo):
     '''
-    传入文件目录及相关辅助信息
+    调用 rtpath_name, year
+    修改 name, info, is_movie
+    返回 "tv_show", "movie" 或 None
     尝试借助api进行搜索
     返回可能的作品类型和名称
     '''
@@ -170,7 +179,7 @@ def analyse_path_type(media:MediaInfo, search):
         rate -= 1
 
     if media.path.is_file():
-        rate -= 0.5
+        rate -= 0.4
     else:
         path_video_num = 0
         for i in media.path.iterdir():
@@ -213,3 +222,28 @@ def analyse_path_type(media:MediaInfo, search):
             media.info = tv_info
             media.is_movie = False
             return 'tv_show'
+
+# 获取完整信息
+def get_full_info(media:MediaInfo):
+    '''
+    此时只有路径
+    会尽可能详细的填充信息
+    '''
+    ######################### [Step.1] 找信息 #########################
+
+    # 先移除无用的标签, 方便之后搜索
+    # rtpath_name, year, season_id is returned.
+    analyse_path_name(media)
+    path_type = analyse_path_type(media)
+    if path_type == 'tv_show':
+        if media.season is None:
+            tid = cleaner.extract_season(media.rtpath_name)
+            if tid != -1:
+                media.season = tid
+        if media.season is None:
+            get_season_id(media)
+    # 判断类型是否为电影并获取搜索结果
+    elif path_type is None:
+        logger.warning(f'[获取信息] 未搜索到相关信息, 跳过 {media.rtpath_name}')
+        return None
+    return path_type

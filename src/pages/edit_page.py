@@ -17,24 +17,50 @@ TASK_MAP = {
 }
 
 
-def value_to_text(value: Optional[bool]) -> str:
-    if value is None:
+#def value_to_text(value: Optional[bool]) -> str:
+#    if value is None:
+#        return '自动'
+#    elif value:
+#        return '是'
+#    else:
+#        return '否'
+
+
+#def text_to_value(text: str) -> Optional[bool]:
+#    if text == '是':
+#        return True
+#    elif text == '否':
+#        return False
+#    elif text == '自动':
+#        return None
+#    else:
+#        return None
+
+#懒得具体修他那里炸了...直接大力出奇迹吧 
+def x2text(x):
+    if x is None:
         return '自动'
-    elif value:
+    elif x == '是':
         return '是'
-    else:
+    elif x == '否':
         return '否'
-
-
-def text_to_value(text: str) -> Optional[bool]:
-    if text == '是':
+    elif x == True:
+        return '是'
+    elif x == False:
+        return '否'
+    logger.warn(f'edit_page.py x2text错误:{x}')
+def x2bool(x):
+    if x is None:
+        return None
+    elif x == '是':
         return True
-    elif text == '否':
+    elif x == '否':
         return False
-    elif text == '自动':
-        return None
-    else:
-        return None
+    elif x == True:
+        return True
+    elif x == False:
+        return False
+    logger.warn(f'edit_page.py x2bool错误:{x}')
 
 
 class EditPage(ui.dialog):
@@ -83,7 +109,7 @@ class EditPage(ui.dialog):
 
                                 tg = RedToogle(
                                     ['是', '否', '自动'],
-                                    value=value_to_text(value),
+                                    value=x2text(value),
                                     on_change=lambda e, c=key: self._change(
                                         c,
                                         e.value,
@@ -108,8 +134,10 @@ class EditPage(ui.dialog):
         self.close()
         Rename().process(
             Path(getattr(self.data, 'path')),
-            text_to_value(getattr(self.data, 'is_anime')),
-            text_to_value(getattr(self.data, 'is_movie')),
+            #text_to_value(getattr(self.data, 'is_anime')),
+            #text_to_value(getattr(self.data, 'is_movie')),
+            x2bool(getattr(self.data, 'is_anime')),
+            x2bool(getattr(self.data, 'is_movie')),
             getattr(self.data, 'uuid'),
             getattr(self.data, 'name'),
             getattr(self.data, 'season_id'),

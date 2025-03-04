@@ -138,7 +138,7 @@ def divide_by_season(filename: str) -> Tuple[str, int]:
         name = filename.split(res[0])
         return name[0], int(res[0][1:])
     else:
-        return filename, -1
+        return filename, None
 
 
 def remove_season(s: str):
@@ -156,7 +156,7 @@ def remove_season(s: str):
     return s.strip()
 
 
-def remove_episode(s: str):
+def remove_episode(s: str, strict: bool = True):
     '''
     该步骤将文件名中, 类似剧集的内容剔除
     Shangri / 香格里拉.E01
@@ -165,6 +165,8 @@ def remove_episode(s: str):
     '''
     for p in episode_partten:
         s = re.sub(p, '', s)
+    if not strict:
+        s = re.sub(r'\b(\d{2})\b','',s)
     return s.strip()
 
 
