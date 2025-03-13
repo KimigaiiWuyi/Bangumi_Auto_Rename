@@ -162,7 +162,7 @@ class Rename:
                             self.prelink,
                         )
                     return
-            # 对 CDs 文件夹特殊处理(直接放到others里，方便后期手动选择theme-music)
+            # 对 CDs 文件夹特殊处理(直接放到other里，方便后期手动选择theme-music)
             if re.search(
                 rf'(?<!{PATTERN})cd(?!{PATTERN})', source_name, re.IGNORECASE
             ) or re.search(
@@ -171,7 +171,7 @@ class Rename:
                 logger.info('[处理特典] 识别为 CDs')
                 link_subitems(
                     source_path,
-                    season_workpath / 'others' / 'CDs',
+                    season_workpath / 'other' / 'CDs',
                     self.prelink,
                 )  # 直接将整个文件夹链接过去
                 return
@@ -190,14 +190,14 @@ class Rename:
                     )
                     return
 
-        # 都没找到，直接丢到others
-        logger.info('[处理特典] 识别失败，默认移动到 others')
+        # 都没找到，直接丢到other
+        logger.info('[处理特典] 识别失败，默认移动到 other')
         # 从中寻找 Season00, 以及处理子文件夹，以防止有些在extras下有嵌套已知文件夹
         if self.SERVER_TYPE == 'jellyfin':
             process_subitems(
                 source_path,
                 special_path,
-                season_workpath / 'others' / source_path.name,
+                season_workpath / 'other' / source_path.name,
                 self.prelink,
             )
         else:
@@ -285,9 +285,9 @@ class Rename:
 
         t = work_path / season_folder_name
         if ep == -1:
-            logger.info('[识别视频] 未识别到集数，放入others文件夹')
+            logger.info('[识别视频] 未识别到集数，放入other文件夹')
             if self.SERVER_TYPE == 'jellyfin':
-                self.prelink[item_path] = t / 'others' / item_name
+                self.prelink[item_path] = t / 'other' / item_name
             else:
                 self.prelink[item_path] = work_path / 'extra' / item_name
         else:
@@ -338,7 +338,7 @@ class Rename:
                         if self.SERVER_TYPE == 'jellyfin':
                             link_subitems(
                                 item_path,
-                                work_path / 'others' / item_path.name,
+                                work_path / 'other' / item_path.name,
                                 self.prelink,
                             )
                         else:
