@@ -16,6 +16,7 @@ from .utils import (
 )
 
 
+# 删不太干净，并且当有多组括号留下时直接删掉首尾括号更寄，故暂时弃用
 def _clean_title_case_insensitive(title: str):
     # 将关键词和标题转换为小写进行匹配
     lower_keywords = [kw.lower() for kw in keywords]
@@ -95,15 +96,20 @@ def remove_tag(title: str, skip=False):
 
     remove_tag_s = s.strip()
     logger.info(f'[移除标签工具] {remove_tag_s}')
-    if not remove_tag_s:
-        s = _clean_title_case_insensitive(title)
+    # if not remove_tag_s:
+    #    s = _clean_title_case_insensitive(title)
 
     return s.strip()
 
 
+# def remove_hash(filename):
+#    match1 = re.match(r'\[[a-f0-9]{8}\]',filename)
+#    match2 = re.match(r'\[[A-F0-9]{8}\]',filename)
+
+
 def divide_by_year(filename: str) -> Tuple[str, int]:
     '''
-    该步骤将文件名中，按照年份分割，并提取年份前面的内容。
+    该步骤将文件名中，按照 年份 分割，并提取年份前面的内容。
 
     Shangri / 香格里拉.2022
 
@@ -118,6 +124,21 @@ def divide_by_year(filename: str) -> Tuple[str, int]:
             return name[0], int(i)
     else:
         return filename, 0
+
+
+def divide_by_season(filename: str) -> Tuple[str, int]:
+    '''
+    该步骤将文件名中，按照 季度 分割
+    Shangri / 香格里拉.S01
+    将会变为
+    Shangri / 香格里拉.
+    '''
+    res = re.findall(r'\bS\d{2}\b', filename)
+    if len(res) == 1:
+        name = filename.split(res[0])
+        return name[0], int(res[0][1:])
+    else:
+        return filename, None
 
 
 def remove_season(s: str):
@@ -135,7 +156,7 @@ def remove_season(s: str):
     return s.strip()
 
 
-def remove_episode(s: str):
+def remove_episode(s: str, strict: bool = True):
     '''
     该步骤将文件名中, 类似剧集的内容剔除
     Shangri / 香格里拉.E01
@@ -144,6 +165,8 @@ def remove_episode(s: str):
     '''
     for p in episode_partten:
         s = re.sub(p, '', s)
+    if not strict:
+        s = re.sub(r'\b(\d{2})\b', '', s)
     return s.strip()
 
 
@@ -215,7 +238,7 @@ def find_common_substrings_in_all(
             if match.size > min_length:
                 A = match.a
                 B = match.size
-                substring = base_string[A : A + B]  # noqa: E203
+                substring = base_string[A: A + B]  # noqa: E203
                 if substring not in common_substrings:
                     common_substrings.append(substring)
 
@@ -229,7 +252,7 @@ def find_common_substrings_in_all(
     return final_common_substrings
 
 
-def find_unique_parts_in_videos(directory: Path):
+def find_common_parts_in_videos(directory: Path):
     '''
     用于提取某个路径中所有文件的公共相似部分
     '''
@@ -249,8 +272,16 @@ def find_unique_parts_in_videos(directory: Path):
     return common_parts
 
 
+LEFT_BRACKET = ['{', '(', '[']
+RIGHT_BRACKET = ['}', ')', ']']
+
+
 def remove_similar_part(common_parts: List[str], filename: str):
     for common_part in common_parts:
+        if common_part[0] in RIGHT_BRACKET:
+            common_part = common_part[1:]
+        if common_part[-1] in LEFT_BRACKET:
+            common_part = common_part[:-1]
         if len(common_part) > 3:  # 确保只移除长度大于3的部分
             pattern = re.escape(common_part)
             filename = re.sub(pattern, '', filename).strip()

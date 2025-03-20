@@ -27,6 +27,8 @@ class Trans:
             try:
                 if target_path.is_dir() or source_path.is_dir():
                     continue
+                # 提前创建目的目录
+                target_path.parent.mkdir(parents=True, exist_ok=True)
                 if not target_path.parent.exists():
                     target_path.parent.mkdir(parents=True)
                 if self.mode == '剪切':

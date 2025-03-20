@@ -1,5 +1,77 @@
-IGNORE_DIR = ['cd', 'scan']
+from pathlib import Path
+
+from typing import Dict
+
+
+PATTERN = r'[a-zA-Z\u4e00-\u9fa5]'
+IGNORE_DIR = ['cd', 'cds', 'scan', 'scans']
 IGNORE_SUFFIX = ['.rar', '.zip', '.7z', '.webp', '.jpg', '.png']
+
+
+'''
+Jellyfin supported extra folder types are:
+    behind the scenes
+    deleted scenes
+    interviews
+    scenes
+    samples
+    shorts
+    featurettes
+    clips
+    other - Generic catch all for extras of an unknown type.
+    extras - Generic catch all for extras of an unknown type.
+    trailers
+'''
+
+JELLYFIN_SUPPORT_EXTRA_NAME_DICT = {
+    '访谈': 'interviews',
+    '特典': 'featurettes',
+    '预告': 'shorts',
+    'clip': 'clips',  # 片段
+    'clips': 'clips',
+    'CM': 'samples',
+    'creditless': 'shorts',
+    'ED': 'shorts',
+    'Event': 'featurettes',
+    'featurette': 'featurettes',  # 花絮
+    'featurettes': 'featurettes',
+    'interview': 'interviews',  # 采访
+    'interviews': 'interviews',
+    'iv': 'interviews',
+    'Menu': 'samples',
+    'NC': 'shorts',
+    'NCED': 'shorts',
+    'NCOP': 'shorts',
+    'NCOP': 'shorts',
+    'OP': 'shorts',
+    'Picture Drama': 'shorts',
+    'Preview': 'samples',
+    'Preview': 'samples',
+    'PV': 'samples',
+    'sample': 'samples',  # 样本
+    'samples': 'samples',
+    'scene': 'scenes',  # 场景
+    'scenes': 'scenes',
+    'short': 'shorts',  # 短片
+    'shorts': 'shorts',
+    'SPOT': 'samples',
+    'Teaser': 'samples',
+    'trailer': 'trailers',
+    'trailers': 'trailers',
+    'Yokoku': 'samples',
+}
+JELLYFIN_UNSUPPORT_EXTRA_TAG = [
+    'other',
+    'others',
+    'extra',
+    'extras',
+]
+JELLYFIN_IGNORE_TAG = [
+    'scan',
+    'scans',
+    'font',
+    'fonts',
+]
 EXTRA_TAG = [
     'NCOP',
     'NCED',
@@ -21,6 +93,10 @@ EXTRA_TAG = [
     '预告',
     '特典',
     '映像',
+    'NCOP',
+    'NCED',
+    'creditless',
+    'Yokoku',
 ]
 S0_TAG = [
     r'OVA',
@@ -35,7 +111,6 @@ S0_TAG = [
 ]
 VIDEO_SUFFIX = [
     '.mp4',
-    '.mka',
     '.mkv',
     '.avi',
     '.wmv',
@@ -101,7 +176,7 @@ season_partten = [
     r'第([\d一二三四五六七八九零]{1,2})(季|部分|部)',
     r'([\d]{1,2})nd Season',
     r'Season ([\d]{1,2})',
-    r' ([\d]{1,2})',
+    # r' ([\d]{1,2})',
     r'(First|Second|Third|Fourth|Fifth) Season',
 ]
 episode_partten = [
@@ -137,3 +212,25 @@ code_partten = [
     r'10bit',
     r'8bit',
 ]
+
+
+class MediaInfo:
+    def __init__(
+        self,
+        _path: Path,
+        _name: str = None,
+        _season: int = None,
+        _is_anime: bool = None,
+        _is_movie: bool = None,
+        _rtpath_name: str = None,
+        _year: int = None,
+        _info: Dict = None,
+    ):
+        self.path = _path
+        self.name = _name
+        self.season = _season
+        self.is_anime = _is_anime
+        self.is_movie = _is_movie
+        self.rtpath_name = _rtpath_name,
+        self.year = _year,
+        self.info = _info,

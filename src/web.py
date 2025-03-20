@@ -34,6 +34,32 @@ async def _send_task(request: Request):
 
     if 'no_process' in tag_list:
         no_process = True
+    # 处理anime相关tag
+    if 'anime' in tag_list:
+        is_anime = True
+    elif 'non-anime' in tag_list:
+        is_anime = False
+    else:
+        if not is_anime:
+            for i in ANI_TAG:
+                if i in tag_list:
+                    is_anime = True
+                    break
+            else:
+                is_anime = False
+        else:
+            is_anime = None
+    # 处理movie相关tag
+    is_movie = None
+    if 'movie' in tag_list:
+        is_movie = True
+    elif 'tvshow' in tag_list:
+        is_movie = False
+    else:
+        for i in MOVIE_TAG:
+            if i in tag_list:
+                is_movie = True
+                break
 
     if not path:
         logger.error('[结束任务] 路径为空！')
@@ -48,22 +74,6 @@ async def _send_task(request: Request):
         logger.error(f'[结束任务] 路径{path}不存在！')
         return {'code': 404, 'data': f'路径{path}不存在！'}
 
-    if not is_anime:
-        for i in ANI_TAG:
-            if i in tag_list:
-                is_anime = True
-                break
-        else:
-            is_anime = False
-    else:
-        is_anime = None
-
-    for i in MOVIE_TAG:
-        if i in tag_list:
-            is_movie = True
-            break
-    else:
-        is_movie = None
 
     Rename().process(_path, is_anime, is_movie)
     create_table.refresh()
