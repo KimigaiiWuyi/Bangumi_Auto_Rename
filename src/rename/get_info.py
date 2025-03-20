@@ -28,7 +28,7 @@ class Search:
                     language='zh-CN',
                     year=year if year != 0 else None,
                 )
-                #if search.results:
+                # if search.results:
                 #    name_list = [i['title'] for i in search.results]
                 #    best_match = difflib.get_close_matches(query,name_list,1)
                 #    if len(best_match) == 0:
@@ -64,7 +64,7 @@ class Search:
                         language='zh-CN',
                         first_air_date_year=year if year != 0 else None,
                     )
-                    #if search.results:
+                    # if search.results:
                     #    # tmdb好像并非精确匹配，如搜索命运石之门，首个匹配结果会是命运石之门0.
                     #    # 尝试加入当未指定年份时，在搜索结果中取匹配率最高的结果
                     #    name_list = [i['name'] for i in search.results]

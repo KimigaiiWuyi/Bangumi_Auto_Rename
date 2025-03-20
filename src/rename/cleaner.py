@@ -166,7 +166,7 @@ def remove_episode(s: str, strict: bool = True):
     for p in episode_partten:
         s = re.sub(p, '', s)
     if not strict:
-        s = re.sub(r'\b(\d{2})\b','',s)
+        s = re.sub(r'\b(\d{2})\b', '', s)
     return s.strip()
 
 
@@ -238,7 +238,7 @@ def find_common_substrings_in_all(
             if match.size > min_length:
                 A = match.a
                 B = match.size
-                substring = base_string[A : A + B]  # noqa: E203
+                substring = base_string[A: A + B]  # noqa: E203
                 if substring not in common_substrings:
                     common_substrings.append(substring)
 

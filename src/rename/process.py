@@ -41,12 +41,21 @@ RECURSION_LEVEL = 0  # 记录递归层数，方便日志输出
 
 
 # 递归的将一个文件夹中的子文件夹链接到一个地方(预处理，塞到result里)
-def link_subitems(src_path: Path, dst_path: Path, result: Dict):
+def link_subitems(
+    src_path: Path,
+    dst_path: Path,
+    result: Dict,
+    root: Dict = None,
+    takeout: bool = 0,  # 将子目录中的视频文件都移到根目录下
+):
     for i in src_path.iterdir():
         if i.is_dir():
-            link_subitems(i, dst_path / i.name, result)
+            link_subitems(i, dst_path / i.name, result, root, takeout)
         else:
-            result[i] = dst_path / i.name
+            if takeout and i.suffix in VIDEO_SUFFIX:
+                result[i] = root/i.name
+            else:
+                result[i] = dst_path / i.name
 
 
 # 处理未归类的特典文件夹
@@ -55,26 +64,29 @@ def process_subitems(
     specials_path: Path,  # Season00 的位置
     extras_path: Path,  # 其他特典位置
     result: Dict,  # 直接可以链接过去的
+    root_path: Dict,  # 季度根目录
     group: Optional[Dict] = None,  # 需要排序改名的sp
 ):
     '''
     当特典文件夹并没有明确指明特点类型时
     该函数可以递归扫描其下所有文件
     把含有 special 相关关键字的文件放入 Season00 文件夹
+    把含有有意义的视频放入对应文件夹
     '''
 
     logger.info(f'[特典识别] 进入 {src_path.__str__()}')
     for item in src_path.iterdir():
         if item.is_dir():
             process_subitems(
-                item, specials_path, extras_path / item.name, result
-            )  # 维持未分类特典的原始结构
+                item, specials_path, extras_path, result
+            )
+        # 此处需要先识别menu, ncop/ed, pv, cm等有明显其他意义的tag
+        # 防止遇到给所有extras都打一个sp tag的
+        # 但是实际使用效果欠佳，毕竟太杂了识别不全，加太多反而容易误识别
         else:
-            # 此处需要先识别menu, ncop/ed, pv, cm等有明显其他意义的tag
-            # 防止遇到给所有extras都打一个sp tag的
-            # 但是实际使用效果欠佳，毕竟太杂了识别不全，加太多反而容易误识别
-            if matcher.match_extra(item.name):
-                result[item] = extras_path / item.name  # 未识别为特典，直接归类到杂项
+            # 识别到支持的 extra 类型
+            if res := matcher.match_extra(item.name):
+                result[item] = root_path / res / item.name
             elif matcher.match_special(item.name):
                 result[item] = specials_path / item.name
                 # cerr 可能产生的问题：多个季度的特典顺序混乱
@@ -85,6 +97,7 @@ def process_subitems(
             # -------------------我们暂且认为正片只会在季度根目录下出现-------------------
 
     logger.info(f'[特典识别] 退出 {src_path.__str__()}')
+
 
 class Rename:
     def __init__(self, _root_path=None):
@@ -107,9 +120,8 @@ class Rename:
 
         matcher.search = Search()
 
-
-
     # 处理特典文件夹
+
     def _process_extras_dir(
         self,
         source_path: Path,  # 要处理的文件夹
@@ -151,16 +163,9 @@ class Rename:
                     re.IGNORECASE,
                 ):
                     logger.info(f'[处理特典] 识别为支持类型 {value}')
-                    if self.SERVER_TYPE == 'jellyfin':
-                        link_subitems(
-                            source_path, season_workpath / value, self.prelink
-                        )  # 直接将整个文件夹链接过去
-                    else:
-                        link_subitems(
-                            source_path,
-                            series_workpath / 'extra' / key,
-                            self.prelink,
-                        )
+                    link_subitems(
+                        source_path, season_workpath / value, self.prelink
+                    )  # 直接将整个文件夹链接过去
                     return
             # 对 CDs 文件夹特殊处理(直接放到other里，方便后期手动选择theme-music)
             if re.search(
@@ -308,8 +313,7 @@ class Rename:
     #    cus_season_id: Optional[int] = None,
     # ):
 
-
-    def _classify_movie(self,media:MediaInfo):
+    def _classify_movie(self, media: MediaInfo):
         if media.is_anime:
             _WORK_PATH = self.ANIME_MOVIE_PATH
         else:
@@ -351,8 +355,8 @@ class Rename:
             logger.warn('进入了意料之外的分支')
             return 1
         return 0
-    
-    def _classify_tvshow(self, media:MediaInfo):
+
+    def _classify_tvshow(self, media: MediaInfo):
         if media.is_anime:
             _WORK_PATH = self.ANIME_PATH
         else:
@@ -361,7 +365,7 @@ class Rename:
         if media.info:
             first_data: str = media.info['first_air_date']
             first_year = first_data.split('-')[0]
-            #if media.season is None or media.season == -1:
+            # if media.season is None or media.season == -1:
             #    matcher.get_season_id(media)
 
             work_path = _WORK_PATH / f'{media.name} ({first_year})'
@@ -408,21 +412,21 @@ class Rename:
         if media.is_movie:
             if self._classify_movie(media):
                 return self.error_reply(
-                uid,
-                '进入了意料之外的分支',
-                media.path,
-                media.is_anime,
-                media.is_movie,
+                    uid,
+                    '进入了意料之外的分支',
+                    media.path,
+                    media.is_anime,
+                    media.is_movie,
                 )
         # 如果是剧集类型
         else:
             if self._classify_tvshow(media):
                 return self.error_reply(
-                uid,
-                '进入了意料之外的分支',
-                media.path,
-                media.is_anime,
-                media.is_movie,
+                    uid,
+                    '进入了意料之外的分支',
+                    media.path,
+                    media.is_anime,
+                    media.is_movie,
                 )
         task_path = TASK_PATH / f'{uid}.json'
         task_data = {
@@ -488,7 +492,7 @@ class Rename:
                 media.is_anime,
                 media.is_movie,
             )
-        
+
         self._classify(media, uid)
 
     def error_reply(
@@ -496,7 +500,7 @@ class Rename:
         _uuid: str,
         error: str,
         path: Path,
-        is_anime: Optional[bool] = None, 
+        is_anime: Optional[bool] = None,
         is_movie: Optional[bool] = None,
         name: Optional[str] = None,
         season_id: Optional[int] = None,

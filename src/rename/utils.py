@@ -24,26 +24,41 @@ Jellyfin supported extra folder types are:
 '''
 
 JELLYFIN_SUPPORT_EXTRA_NAME_DICT = {
-    'scene': 'scenes',
-    'scenes': 'scenes',
-    'interview': 'interviews',
+    '访谈': 'interviews',
+    '特典': 'featurettes',
+    '预告': 'shorts',
+    'clip': 'clips',  # 片段
+    'clips': 'clips',
+    'CM': 'samples',
+    'creditless': 'shorts',
+    'ED': 'shorts',
+    'Event': 'featurettes',
+    'featurette': 'featurettes',  # 花絮
+    'featurettes': 'featurettes',
+    'interview': 'interviews',  # 采访
     'interviews': 'interviews',
     'iv': 'interviews',
-    'sample': 'samples',
+    'Menu': 'samples',
+    'NC': 'shorts',
+    'NCED': 'shorts',
+    'NCOP': 'shorts',
+    'NCOP': 'shorts',
+    'OP': 'shorts',
+    'Picture Drama': 'shorts',
+    'Preview': 'samples',
+    'Preview': 'samples',
+    'PV': 'samples',
+    'sample': 'samples',  # 样本
     'samples': 'samples',
-    'short': 'shorts',
+    'scene': 'scenes',  # 场景
+    'scenes': 'scenes',
+    'short': 'shorts',  # 短片
     'shorts': 'shorts',
-    'featurette': 'featurettes',
-    'featurettes': 'featurettes',
-    'clip': 'clips',
-    'clips': 'clips',
+    'SPOT': 'samples',
+    'Teaser': 'samples',
     'trailer': 'trailers',
     'trailers': 'trailers',
-    'Preview': 'trailers',
-    'CM': 'trailers',
-    'SPOT': 'trailers',
-    'PV': 'trailers',
-    'Teaser': 'trailers',
+    'Yokoku': 'samples',
 }
 JELLYFIN_UNSUPPORT_EXTRA_TAG = [
     'other',
@@ -198,6 +213,7 @@ code_partten = [
     r'8bit',
 ]
 
+
 class MediaInfo:
     def __init__(
         self,
@@ -218,5 +234,3 @@ class MediaInfo:
         self.rtpath_name = _rtpath_name,
         self.year = _year,
         self.info = _info,
-
-        

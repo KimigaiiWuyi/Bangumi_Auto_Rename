@@ -12,6 +12,7 @@ from ..logger import logger
 
 search = 0
 
+
 def match_special(name):
     for s0 in utils.S0_TAG:  # 寻找 Season00
         if s0 == r'\.5':  # 防止5作为后缀开头
@@ -35,15 +36,16 @@ def match_special(name):
 
 
 def match_extra(name):
-    for ex in utils.EXTRA_TAG:
+    for key, value in utils.JELLYFIN_SUPPORT_EXTRA_NAME_DICT.items():
         res = re.search(
-            rf'(?<!{utils.PATTERN}){ex}(?!{utils.PATTERN})',
+            rf'(?<!{utils.PATTERN}){key}(?!{utils.PATTERN})',
             name,
             re.IGNORECASE,
         )
         if res:
-            return True
-    return False
+            return value
+    return None
+
 
 def get_season_id(media: MediaInfo):
     '''
@@ -96,23 +98,24 @@ def get_season_id(media: MediaInfo):
     return season_id
 
 # 封装标签移除和年份，季度识别
-def analyse_path_name(media:MediaInfo):
+
+
+def analyse_path_name(media: MediaInfo):
     '''
     调用 media 中的 path
     修改 media 中的 rtpath_name, year, season_id
     仅依赖文件名剥离名称，识别年份和季度
     '''
     if media.path.is_file():
-        dir_name = media.path.stem;
+        dir_name = media.path.stem
     else:
-        dir_name = media.path.name;
+        dir_name = media.path.name
     rtpath_name = media.rtpath_name
     logger.info(f'[标签移除] 开始分析 {dir_name}')
     year = 0
     season_id = media.season
 
-
-    if rtpath_name is None:
+    if not rtpath_name:
         rtpath_name = cleaner.remove_tag(dir_name)
     # 如果标签移除后啥都没有, 说明文件名也是标签的一部分
     if not rtpath_name:
@@ -131,7 +134,7 @@ def analyse_path_name(media:MediaInfo):
         rtpath_name, year = cleaner.divide_by_year(rtpath_name)
 
     rtpath_name = cleaner.remove_season(rtpath_name)
-    rtpath_name = cleaner.remove_episode(rtpath_name,media.path.is_dir())
+    rtpath_name = cleaner.remove_episode(rtpath_name, media.path.is_dir())
     rtpath_name = rtpath_name.strip('!')
 
     logger.info(f'[标签移除] 去除标签后: {rtpath_name}, 年份识别为： {year}')
@@ -143,7 +146,9 @@ def analyse_path_name(media:MediaInfo):
 
 # 识别文件夹储存的是电影还是剧集, 建议传入最低级文件夹（即只包含单季度的）
 # 重构于 _process 中 step1.5 部分
-def analyse_path_type(media:MediaInfo):
+
+
+def analyse_path_type(media: MediaInfo):
     '''
     调用 rtpath_name, year
     修改 name, info, is_movie
@@ -224,7 +229,9 @@ def analyse_path_type(media:MediaInfo):
             return 'tv_show'
 
 # 获取完整信息
-def get_full_info(media:MediaInfo):
+
+
+def get_full_info(media: MediaInfo):
     '''
     此时只有路径
     会尽可能详细的填充信息

@@ -5,7 +5,7 @@
 可在配置页面选择服务端类型。
 
 因为 Jellyfin 可以识别季度内 extras 文件夹，故将 extras 文件夹按季度分类。尝试增加 Jellyfin 支持的 extras 分类识别，虽然整体应该没什么效果。
-此外，特别将 CD 相关文件夹链接到季度下的 others 文件夹，方便后期手动选择 theme-music 等操作。
+此外，特别将 CD 相关文件夹链接到季度下的 other 文件夹，方便后期手动选择 theme-music 等操作。
 
 ### 优化识别能力
 
