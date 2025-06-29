@@ -24,6 +24,7 @@ def create_table():
         {'name': 'uuid', 'label': 'UUID', 'field': 'uuid'},
         {'name': 'is_anime', 'label': '是否为动漫', 'field': 'is_anime'},
         {'name': 'is_movie', 'label': '是否为电影', 'field': 'is_movie'},
+        {'name': 'ai_used', 'label': 'AI识别', 'field': 'ai_used'},
     ]
     for j in columns:
         j['align'] = 'center'
@@ -38,6 +39,11 @@ def create_table():
             status = task_data['error']
         else:
             status = '成功'
+        
+        # 检查是否使用了AI
+        ai_used = task_data.get('use_ai', False)
+        ai_status = '是' if ai_used else '否'
+        
         rows.append(
             {
                 'id': index,
@@ -48,6 +54,7 @@ def create_table():
                 'status': status,
                 'is_anime': task_data['is_anime'],
                 'is_movie': task_data['is_movie'],
+                'ai_used': ai_status,
                 'value': '操作',
             }
         )
@@ -63,6 +70,7 @@ def create_table():
         'name',
         'season',
         'status',
+        'ai_used',
         'value',
     ]
 

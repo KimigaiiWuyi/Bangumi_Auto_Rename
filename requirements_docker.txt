@@ -59,3 +59,5 @@ tmdbsimple>=2.2.20
 jikanpy>=3.4.2
 nicegui>=2.0.1
 structlog>=20.1.0
+openai>=1.54.0
+hachoir>=3.3.0

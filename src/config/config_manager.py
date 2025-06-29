@@ -4,23 +4,35 @@ from typing import Any, Dict
 from ..utils.path import CONFIG_PATH
 
 CONFIG_DEFAULT = {
-    'api_key': '',
-    'bangumi_path': '',
-    'movie_path': '',
-    'anime_path': '',
-    'anime_movie_path': '',
-    'mode': '链接',
-    'docker_mnt': '/media',
+    "api_key": "",
+    "bangumi_path": "",
+    "movie_path": "",
+    "anime_path": "",
+    "anime_movie_path": "",
+    "mode": "链接",
+    "docker_mnt": "/media",
+    "ai_api_key": "",
+    "ai_base_url": "https://api.openai.com/v1",
+    "ai_model": "gpt-4o-mini",
+    "ai_enabled": False,
+    "ai_confidence_threshold": "Medium",
+    "OPENAI_JSON_MODE": False,
 }
 
 CN_MAP = {
-    'api_key': '🔑 API密钥',
-    'bangumi_path': '🎬 电视剧路径',
-    'movie_path': '🎬 电影路径',
-    'anime_path': '🎬 动漫路径',
-    'anime_movie_path': '🎬 动漫电影路径',
-    'mode': '💿 重命名模式',
-    'docker_mnt': '📁 Docker挂载路径',
+    "api_key": "🔑 TMDB API密钥",
+    "bangumi_path": "🎬 电视剧路径",
+    "movie_path": "🎬 电影路径",
+    "anime_path": "🎬 动漫路径",
+    "anime_movie_path": "🎬 动漫电影路径",
+    "mode": "💿 重命名模式",
+    "docker_mnt": "📁 Docker挂载路径",
+    "ai_api_key": "🤖 AI API密钥",
+    "ai_base_url": "🌐 AI API地址",
+    "ai_model": "🧠 AI模型",
+    "ai_enabled": "🚀 启用AI识别",
+    "ai_confidence_threshold": "📊 AI置信度阈值",
+    "OPENAI_JSON_MODE": "🤖 OpenAI JSON 模式",
 }
 
 
