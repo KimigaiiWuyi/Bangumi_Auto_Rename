@@ -1,6 +1,6 @@
-from typing import Dict, List, Union, Literal, Optional
+from typing import List, Literal, Optional
 
-from pydantic import Field, BaseModel, validator
+from pydantic import Field, BaseModel, field_validator
 
 
 class SeasonMapping(BaseModel):
@@ -9,7 +9,8 @@ class SeasonMapping(BaseModel):
     local_group_name: str = Field(..., description="本地组名称，例如目录名")
     maps_to_tmdb_seasons: List[int] = Field(..., description="对应的TMDB季度列表")
 
-    @validator("maps_to_tmdb_seasons")
+    @field_validator("maps_to_tmdb_seasons")
+    @classmethod
     def validate_tmdb_seasons(cls, v):
         """验证TMDB季度列表"""
         if not isinstance(v, list):
@@ -24,6 +25,10 @@ class SeasonMapping(BaseModel):
 
         return v
 
+    class Config:
+        # Gemini API兼容配置
+        populate_by_name = True
+
 
 class EpisodeMapping(BaseModel):
     """单个剧集映射"""
@@ -37,6 +42,10 @@ class EpisodeMapping(BaseModel):
     confidence: Literal["High", "Medium", "Low"] = Field(
         default="Medium", description="置信度等级"
     )
+
+    class Config:
+        # Gemini API兼容配置
+        populate_by_name = True
 
 
 class AIAnalysisResult(BaseModel):
@@ -54,16 +63,47 @@ class AIAnalysisResult(BaseModel):
     )
     extra_notes: Optional[str] = Field(default=None, description="额外特殊情况说明")
 
-    @validator("file_mapping")
-    def validate_mapping_not_empty(cls, v, values):
+    @field_validator("file_mapping")
+    @classmethod
+    def validate_mapping_not_empty(cls, v, info):
         """验证映射列表不为空（当置信度足够高时）"""
-        confidence = values.get("confidence", "Low")
-        if confidence in ["High", "Medium"] and not v:
-            raise ValueError("高置信度结果必须包含映射信息")
+        # 在Pydantic V2中，需要从info.data获取其他字段值
+        if hasattr(info, 'data') and info.data:
+            confidence = info.data.get("confidence", "Low")
+            if confidence in ["High", "Medium"] and not v:
+                raise ValueError("高置信度结果必须包含映射信息")
         return v
 
     class Config:
-        # 允许额外字段，但会发出警告
-        extra = "forbid"
+        # Gemini API不支持additionalProperties，所以不设置extra
         # JSON序列化时使用字段别名
-        allow_population_by_field_name = True
+        populate_by_name = True
+
+    @classmethod
+    def model_json_schema(cls, by_alias: bool = True, ref_template: str = '#/$defs/{model}'):
+        """
+        生成Gemini API兼容的JSON Schema
+        移除additionalProperties以避免Gemini API错误
+        """
+        schema = super().model_json_schema(by_alias=by_alias, ref_template=ref_template)
+
+        def remove_additional_properties(obj):
+            """递归移除所有additionalProperties"""
+            if isinstance(obj, dict):
+                # 移除additionalProperties
+                obj.pop('additionalProperties', None)
+                # 递归处理嵌套对象
+                for key, value in obj.items():
+                    remove_additional_properties(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    remove_additional_properties(item)
+
+        remove_additional_properties(schema)
+        return schema
+
+    # 为了向后兼容，保留schema方法
+    @classmethod
+    def schema(cls, by_alias: bool = True, ref_template: str = '#/definitions/{model}'):
+        """向后兼容的schema方法"""
+        return cls.model_json_schema(by_alias=by_alias, ref_template=ref_template)

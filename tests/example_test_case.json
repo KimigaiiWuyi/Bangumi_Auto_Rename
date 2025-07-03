@@ -1,0 +1,79 @@
+{
+  "metadata": {
+    "created_at": "2024-12-19T10:30:00",
+    "source_path": "/path/to/anime/Jujutsu Kaisen",
+    "anime_name": "呪術廻戦",
+    "description": "测试用例：呪術廻戦 - 多季度动漫识别",
+    "file_count": 6,
+    "total_size_mb": 2048.5
+  },
+  "anime_info": {
+    "id": 95479,
+    "name": "呪術廻戦",
+    "original_name": "Jujutsu Kaisen",
+    "first_air_date": "2020-10-03",
+    "number_of_seasons": 2,
+    "number_of_episodes": 48,
+    "seasons": [
+      {
+        "id": 119834,
+        "season_number": 0,
+        "name": "特典",
+        "episode_count": 2,
+        "air_date": null
+      },
+      {
+        "id": 119835,
+        "season_number": 1,
+        "name": "第一季",
+        "episode_count": 24,
+        "air_date": "2020-10-03"
+      },
+      {
+        "id": 119836,
+        "season_number": 2,
+        "name": "第二季",
+        "episode_count": 24,
+        "air_date": "2023-07-06"
+      }
+    ]
+  },
+  "local_files": [
+    {
+      "filename": "Jujutsu Kaisen S01E01.mkv",
+      "path": "Season 1/Jujutsu Kaisen S01E01.mkv",
+      "size": 367001600,
+      "duration": 23.5
+    },
+    {
+      "filename": "Jujutsu Kaisen S01E02.mkv",
+      "path": "Season 1/Jujutsu Kaisen S01E02.mkv",
+      "size": 356505600,
+      "duration": 23.8
+    },
+    {
+      "filename": "Jujutsu Kaisen S02E01.mkv",
+      "path": "Season 2/Jujutsu Kaisen S02E01.mkv",
+      "size": 378201600,
+      "duration": 24.2
+    },
+    {
+      "filename": "Jujutsu Kaisen S02E02.mkv",
+      "path": "Season 2/Jujutsu Kaisen S02E02.mkv",
+      "size": 389401600,
+      "duration": 24.0
+    },
+    {
+      "filename": "Jujutsu Kaisen OVA01.mkv",
+      "path": "Specials/Jujutsu Kaisen OVA01.mkv",
+      "size": 298301600,
+      "duration": 22.1
+    },
+    {
+      "filename": "Jujutsu Kaisen OVA02.mkv",
+      "path": "Specials/Jujutsu Kaisen OVA02.mkv",
+      "size": 312801600,
+      "duration": 21.8
+    }
+  ]
+}

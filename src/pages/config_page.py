@@ -44,11 +44,15 @@ class ConfigPage(ui.dialog):
             )
             ai_configs = [
                 "ai_enabled",
+                "ai_provider",
+                "ai_confidence_threshold",
                 "OPENAI_JSON_MODE",
                 "ai_api_key",
                 "ai_base_url",
                 "ai_model",
-                "ai_confidence_threshold",
+                "gemini_api_key",
+                "gemini_base_url",
+                "gemini_model",
             ]
             for cn in ai_configs:
                 self._create_config_row(cn)
@@ -94,6 +98,14 @@ class ConfigPage(ui.dialog):
                         )
                         tg.style("font-size: 10px")
                         tg.classes("flex no-wrap w-full")
+                    elif cn == "ai_provider":
+                        tg = RedToogle(
+                            ["openai", "gemini"],
+                            value=cm.get_config(cn) or "openai",
+                            on_change=lambda e, c=cn: self._change(c, e.value),
+                        )
+                        tg.style("font-size: 10px")
+                        tg.classes("flex no-wrap w-full")
                     else:
                         ui.input(
                             value=cm.get_config(cn),
@@ -123,12 +135,23 @@ class ConfigPage(ui.dialog):
         setattr(self.config, key, value)
 
     def _handle_ok(self):
+        # 验证URL配置项
+        url_configs = ["ai_base_url", "gemini_base_url"]
+        for url_config in url_configs:
+            if hasattr(self.config, url_config):
+                url_value = getattr(self.config, url_config)
+                if url_value and not cm.validate_url(url_value):
+                    ui.notify(f"❌ {CN_MAP.get(url_config, url_config)} 格式无效", type="negative")
+                    return
+
+        # 保存所有配置
         for cn in self.config.__dict__:
             cm.set_config(
                 cn,
                 getattr(self.config, cn),
             )
         logger.info('[配置] 配置已修改为： {}'.format(cm.config))
+        ui.notify("✅ 配置保存成功", type="positive")
         self.close()
 
 
