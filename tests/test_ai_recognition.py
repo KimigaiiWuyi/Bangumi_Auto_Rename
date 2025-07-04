@@ -152,7 +152,6 @@ class AIRecognitionTester:
         test_case = {
             "metadata": {
                 "created_at": datetime.now().isoformat(),
-                "source_path": str(path),
                 "anime_name": name,
                 "description": f"测试用例：{name}",
                 "file_count": len(video_files),
