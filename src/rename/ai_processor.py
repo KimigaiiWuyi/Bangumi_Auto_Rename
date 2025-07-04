@@ -106,7 +106,7 @@ class AIProcessor:
                     continue
 
                 # 根据类型确定目标目录
-                if episode_type == "special" or episode_type == "ova":
+                if episode_type == "special":
                     target_dir = work_path / "Season0"
                 elif episode_type == "movie":
                     target_dir = work_path / "Movies"

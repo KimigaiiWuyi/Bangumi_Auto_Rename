@@ -22,7 +22,7 @@ CONFIG_DEFAULT = {
     "gemini_model": "gemini-2.5-flash",
     "ai_enabled": False,
     "ai_confidence_threshold": "Medium",
-    "OPENAI_JSON_MODE": False,
+    "openai_output_format": "function_calling",  # OpenAI输出格式选择
 }
 
 CN_MAP = {
@@ -42,7 +42,7 @@ CN_MAP = {
     "gemini_model": "💎 Gemini模型",
     "ai_enabled": "🚀 启用AI识别",
     "ai_confidence_threshold": "📊 AI置信度阈值",
-    "OPENAI_JSON_MODE": "🤖 OpenAI JSON 模式",
+    "openai_output_format": "🎯 OpenAI输出格式",
 }
 
 

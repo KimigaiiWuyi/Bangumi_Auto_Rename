@@ -11,15 +11,17 @@ from .models import AIAnalysisResult
 
 
 class OpenAIClient:
-    """OpenAI API客户端，支持Tool-calling和JSON模式"""
-    
+    """OpenAI API客户端，支持多种格式化输出方式"""
+
     def __init__(self):
         self.api_key = cm.get_config("ai_api_key")
         self.base_url = cm.get_config("ai_base_url")
         self.model = cm.get_config("ai_model")
         self.enabled = bool(cm.get_config("ai_enabled"))
         self.confidence_threshold = cm.get_config("ai_confidence_threshold")
-        self.json_mode = bool(cm.get_config("OPENAI_JSON_MODE"))
+
+        # 支持多种输出格式
+        self.output_format = cm.get_config("openai_output_format") or "function_calling"
 
         if self.enabled and self.api_key:
             self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
@@ -79,12 +81,8 @@ class OpenAIClient:
                 "temperature": 0.1,
             }
 
-            if self.json_mode:
-                request_params["tools"] = [self._get_json_schema()]
-                request_params["tool_choice"] = {
-                    "type": "function",
-                    "function": {"name": "analyze_file_structure"},
-                }
+            # 根据输出格式配置请求参数
+            self._configure_output_format(request_params)
 
             response = self.client.chat.completions.create(**request_params)
 
@@ -244,11 +242,11 @@ class OpenAIClient:
         Returns:
             添加了OpenAI特定JSON格式要求的完整提示词
         """
-        if self.json_mode:
-            # Tool-calling模式下不需要额外的JSON格式说明
+        if self.output_format in ["function_calling", "structured_output"]:
+            # Tool-calling和structured output模式下不需要额外的JSON格式说明
             return base_prompt
 
-        # 非Tool-calling模式下需要详细的JSON格式说明
+        # JSON object和text模式下需要详细的JSON格式说明
         json_instructions = """
 请严格按照以下JSON格式返回分析结果：
 {
@@ -281,6 +279,176 @@ class OpenAIClient:
 - local_group_name应该是从文件扫描中获得的实际目录名或组名
 - maps_to_tmdb_seasons是整数数组，表示本地组对应的TMDB季度
 - episode_type只能是: "regular", "special", "movie"
-- 所有confidence值必须是枚举值之一
+- 如果整个子路径中均无匹配命中项，则无需包含在season_mapping中
+- season_mapping的maps_to_tmdb_seasons中无需包含第零季
 """
         return base_prompt + json_instructions
+
+    def _configure_output_format(self, request_params: Dict) -> None:
+        """
+        根据配置的输出格式类型配置请求参数
+
+        Args:
+            request_params: 请求参数字典，会被直接修改
+        """
+        if self.output_format == "function_calling":
+            request_params["tools"] = [self._get_json_schema()]
+            request_params["tool_choice"] = {
+                "type": "function",
+                "function": {"name": "analyze_file_structure"},
+            }
+        elif self.output_format == "json_object":
+            request_params["response_format"] = {"type": "json_object"}
+        elif self.output_format == "structured_output":
+            # 使用新的structured output API
+            request_params["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "ai_analysis_result",
+                    "schema": AIAnalysisResult.model_json_schema()
+                }
+            }
+        # 如果是"text"格式，不添加任何特殊参数
+
+    def test_api_capabilities(self) -> Dict[str, bool]:
+        """
+        测试当前API支持的功能
+
+        Returns:
+            包含各种功能支持情况的字典
+        """
+        if not self.is_available():
+            return {
+                "json_mode_supported": False,
+                "structured_output_supported": False,
+                "function_calling_supported": False,
+                "error": "API未配置或不可用"
+            }
+
+        results = {
+            "json_mode_supported": False,
+            "structured_output_supported": False,
+            "function_calling_supported": False,
+            "errors": []
+        }
+
+        # 测试JSON Mode
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "你是一个有用的助手，请以JSON格式回复，遵守以下JSON schema:\n```json\n{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"age\":{\"type\":\"integer\"},\"major\":{\"type\":\"string\"}},\"required\":[\"name\",\"age\",\"major\"],\"additionalProperties\":false}\n```"},
+                    {"role": "user", "content": "请提取以下信息并以JSON格式返回：姓名、年龄、专业。文本：张三是一名21岁的计算机科学专业学生。"}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0
+            )
+
+            # 尝试解析JSON
+            raw = response.choices[0].message.content
+            json.loads(self._extract_json_from_text(raw))  # 验证JSON格式
+            results["json_mode_supported"] = True
+
+        except Exception as e:
+            results["errors"].append(f"JSON Mode测试失败: {str(e)}")
+
+        # 测试Structured Output
+        try:
+            test_schema = {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "age": {"type": "integer"},
+                    "major": {"type": "string"},
+                    "university": {"type": "string"},
+                    "gpa": {"type": "number"}
+                },
+                "required": ["name"],
+                "additionalProperties": False
+            }
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "从给定文本中提取学生信息。"},
+                    {"role": "user", "content": "李华是北京大学计算机科学专业的大二学生，今年20岁，GPA为3.8。"}
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "student_info",
+                        "schema": test_schema
+                    }
+                },
+                temperature=0
+            )
+
+            # 尝试解析结构化JSON输出
+            raw2 = response.choices[0].message.content
+            json.loads(self._extract_json_from_text(raw2))  # 验证JSON格式
+            results["structured_output_supported"] = True
+
+        except Exception as e:
+            results["errors"].append(f"Structured Output测试失败: {str(e)}")
+
+        # 测试Function Calling
+        try:
+            tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "get_weather",
+                        "description": "获取指定城市的天气信息",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "city": {
+                                    "type": "string",
+                                    "description": "城市名称，例如：北京、上海"
+                                },
+                                "unit": {
+                                    "type": "string",
+                                    "enum": ["celsius", "fahrenheit"],
+                                    "description": "温度单位"
+                                }
+                            },
+                            "required": ["city"],
+                            "additionalProperties": False
+                        }
+                    }
+                }
+            ]
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "user", "content": "请帮我查询北京今天的天气情况"}
+                ],
+                tools=tools,
+                tool_choice="auto",
+                temperature=0
+            )
+
+            # 检查是否有函数调用
+            if response.choices[0].message.tool_calls:
+                results["function_calling_supported"] = True
+
+        except Exception as e:
+            results["errors"].append(f"Function Calling测试失败: {str(e)}")
+
+        return results
+
+    def _extract_json_from_text(self, text: str) -> str:
+        """从文本中提取第一个JSON对象字符串"""
+        # 首先尝试直接解析
+        try:
+            json.loads(text)
+            return text
+        except json.JSONDecodeError:
+            pass
+
+        # 使用正则表达式提取JSON
+        match = re.search(r"(\{.*\})", text, re.S)
+        if match:
+            return match.group(1)
+        raise ValueError("未在文本中找到JSON对象")

@@ -7,7 +7,7 @@ class SeasonMapping(BaseModel):
     """季度映射对象"""
 
     local_group_name: str = Field(..., description="本地组名称，例如目录名")
-    maps_to_tmdb_seasons: List[int] = Field(..., description="对应的TMDB季度列表")
+    maps_to_tmdb_seasons: List[int] = Field(..., description="对应的TMDB季度列表，无需包括第0季")
 
     @field_validator("maps_to_tmdb_seasons")
     @classmethod
@@ -15,9 +15,10 @@ class SeasonMapping(BaseModel):
         """验证TMDB季度列表"""
         if not isinstance(v, list):
             raise ValueError("maps_to_tmdb_seasons必须是列表类型")
-
-        if not v:
-            raise ValueError("maps_to_tmdb_seasons不能为空")
+        
+        # 有时子路径中完全无匹配项或仅有第零季的特典，不验证。
+        # if not v:
+        #     raise ValueError("maps_to_tmdb_seasons不能为空")
 
         for season in v:
             if not isinstance(season, int) or season < 0:
@@ -56,7 +57,7 @@ class AIAnalysisResult(BaseModel):
     )
     reason: str = Field(..., description="分析理由说明")
     season_mapping: List[SeasonMapping] = Field(
-        default_factory=list, description="季度映射列表"
+        default_factory=list, description="季度映射列表，如整个子路径下均无匹配命中项，则无需包含"
     )
     file_mapping: List[EpisodeMapping] = Field(
         default_factory=list, description="剧集映射列表"
