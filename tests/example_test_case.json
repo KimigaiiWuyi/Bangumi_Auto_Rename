@@ -1,7 +1,7 @@
 {
   "metadata": {
     "created_at": "2024-12-19T10:30:00",
-    "source_path": "/path/to/anime/Jujutsu Kaisen",
+    "path_name": "Jujutsu Kaisen",
     "anime_name": "呪術廻戦",
     "description": "测试用例：呪術廻戦 - 多季度动漫识别",
     "file_count": 6,

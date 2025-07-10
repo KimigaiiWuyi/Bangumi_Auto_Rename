@@ -84,7 +84,7 @@ class ConfigPage(ui.dialog):
                         )
                         tg.style("font-size: 10px")
                         tg.classes("flex no-wrap w-full")
-                    elif cn == "ai_enabled" or cn == "OPENAI_JSON_MODE":
+                    elif cn == "ai_enabled":
                         tg = RedToogle(
                             ["启用", "禁用"],
                             value="启用" if cm.get_config(cn) else "禁用",

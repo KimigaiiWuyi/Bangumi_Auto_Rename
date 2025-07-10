@@ -2,7 +2,14 @@
 
 ## 概述
 
-本测试脚本适配了最新的AI识别架构，支持OpenAI和Gemini双AI提供商，提供四种测试模式，并新增了测试用例保存和读取功能，便于快速测试和社区收集测试用例。
+本测试脚本采用重构的模块化架构，支持OpenAI和Gemini双AI提供商，提供三种测试模式，并新增了测试用例保存和读取功能，便于快速测试和社区收集测试用例。
+
+### 🏗️ 架构设计
+
+脚本采用三个清晰的模块：
+- **数据输入**：从JSON读取或从路径分析
+- **数据处理**：save模式跳过，manual模式包含用户交互
+- **数据保存**：测试结果格式与测试用例保持一致，analysis_result直接加在最后
 
 ## 功能特性
 
@@ -11,12 +18,19 @@
 1. **manual**: 手动模式 - 生成prompt供用户复制给LLM测试
 2. **auto**: 自动模式 - 完整AI识别流程，不实际移动文件
 3. **save**: 保存模式 - 将动漫信息和本地文件信息保存为JSON测试用例
-4. **load**: 加载模式 - 从JSON文件加载测试用例进行AI分析
+
+### 📁 支持的输入数据源
+
+- **--path**: 从文件系统路径读取动漫文件
+- **--input**: 从JSON测试用例文件加载数据
+- **优先级**: 当同时指定时，--input 优先
 
 ### 🤖 支持的AI提供商
 
 - **OpenAI**: 支持GPT-4、GPT-3.5等模型，兼容OpenAI API格式
+  - 支持多种输出格式：function_calling、json_object、structured_output、text
 - **Gemini**: 支持Google Gemini系列模型，原生结构化输出
+  - 支持自定义base URL配置
 
 ## 使用方法
 
@@ -34,14 +48,17 @@
 python tests/test_ai_recognition.py [选项]
 
 必需参数:
-  --mode {manual,auto,save,load}  测试模式
+  --mode {manual,auto,save}       测试模式
+
+输入数据源 (二选一，同时指定时--input优先):
+  --path PATH                     动漫文件路径
+  --input INPUT                   测试用例JSON文件路径
 
 可选参数:
-  --path PATH                     动漫文件路径 (manual/auto/save模式必需)
   --provider {openai,gemini}      AI提供商选择
-  --json_mode {true,false}        强制设置OpenAI JSON模式
-  --output OUTPUT                 保存测试用例的文件路径 (save模式必需)
-  --input INPUT                   加载测试用例的文件路径 (load模式必需)
+  --openai_output_format {function_calling,json_object,structured_output,text}
+                                  OpenAI输出格式选择
+  --output OUTPUT                 保存测试用例的文件路径 (save模式可选，默认使用case_文件夹名.json)
 ```
 
 ### 使用示例
@@ -68,6 +85,9 @@ python tests/test_ai_recognition.py --mode manual --path "/path/to/anime" --prov
 # 使用OpenAI进行完整测试
 python tests/test_ai_recognition.py --mode auto --path "/path/to/anime" --provider openai
 
+# 使用OpenAI的特定输出格式
+python tests/test_ai_recognition.py --mode auto --path "/path/to/anime" --provider openai --openai_output_format function_calling
+
 # 使用Gemini进行测试
 python tests/test_ai_recognition.py --mode auto --path "/path/to/anime" --provider gemini
 ```
@@ -81,8 +101,11 @@ python tests/test_ai_recognition.py --mode auto --path "/path/to/anime" --provid
 #### 3. 保存测试用例
 
 ```bash
-# 保存测试用例到JSON文件
+# 保存测试用例到JSON文件（指定输出文件名）
 python tests/test_ai_recognition.py --mode save --path "/path/to/anime" --output test_case.json
+
+# 保存测试用例（使用默认文件名：case_文件夹名.json）
+python tests/test_ai_recognition.py --mode save --path "/path/to/anime"
 ```
 
 保存模式会：
@@ -90,22 +113,42 @@ python tests/test_ai_recognition.py --mode save --path "/path/to/anime" --output
 - 分析视频文件元数据
 - 保存为标准化的JSON格式
 - 便于后续重复测试
+- 默认文件名格式：`case_文件夹名.json`
 
-#### 4. 加载测试用例
+#### 4. 从测试用例进行测试
 
 ```bash
-# 从JSON文件加载测试用例
-python tests/test_ai_recognition.py --mode load --input test_case.json --provider gemini
+# 从JSON文件进行手动测试
+python tests/test_ai_recognition.py --mode manual --input test_case.json --provider gemini
+
+# 从JSON文件进行自动测试，指定OpenAI输出格式
+python tests/test_ai_recognition.py --mode auto --input test_case.json --provider openai --openai_output_format function_calling
 
 # 对比不同AI提供商的结果
-python tests/test_ai_recognition.py --mode load --input test_case.json --provider openai
+python tests/test_ai_recognition.py --mode auto --input test_case.json --provider gemini
 ```
 
-加载模式会：
-- 从JSON文件读取测试用例
+从测试用例进行测试会：
+- 从JSON文件读取测试用例数据（支持测试用例文件和测试结果文件）
 - 使用指定的AI提供商进行分析
 - 显示分析结果并保存
-- 支持批量测试和对比
+- 支持批量测试和对比不同AI提供商
+- 测试结果文件可以直接作为输入用例使用
+
+### OpenAI输出格式说明
+
+使用`--openai_output_format`参数可以指定OpenAI的输出格式：
+
+- **function_calling**: 使用函数调用模式，结构化程度最高
+- **json_object**: 使用JSON对象模式，要求返回有效JSON
+- **structured_output**: 使用结构化输出模式（需要支持的模型）
+- **text**: 普通文本模式，依赖prompt指导
+
+不同格式的特点：
+- `function_calling`: 最稳定，适合生产环境
+- `json_object`: 兼容性好，适合大多数场景
+- `structured_output`: 最新特性，需要新版本模型支持
+- `text`: 最基础，依赖模型理解能力
 
 ## 测试用例格式
 
@@ -115,7 +158,7 @@ python tests/test_ai_recognition.py --mode load --input test_case.json --provide
 {
   "metadata": {
     "created_at": "创建时间",
-    "source_path": "原始路径",
+    "path_name": "路径名称（文件夹名，不含完整路径）",
     "anime_name": "动漫名称",
     "description": "描述信息",
     "file_count": "文件数量",
@@ -135,25 +178,46 @@ python tests/test_ai_recognition.py --mode load --input test_case.json --provide
 }
 ```
 
-AI分析结果会单独保存为另一个JSON文件，包含完整的分析结果和置信度信息。
+### 测试结果格式
+
+测试结果文件格式与测试用例保持一致，`analysis_result`直接加在最后：
+
+```json
+{
+  "metadata": { ... },
+  "anime_info": { ... },
+  "local_files": [ ... ],
+  "analysis_result": {
+    "mode": "测试模式",
+    "provider": "AI提供商",
+    "timestamp": "分析时间",
+    "ai_result": "AI分析结果",
+    "mapping_analysis": "文件映射分析"
+  }
+}
+```
+
+这样设计的好处是测试结果可以直接作为测试用例使用。
 
 ## 输出文件
 
 ### 输出文件说明
 
 #### 测试用例文件 (save模式)
-- 文件名：用户指定的输出文件名
+- 默认文件名：`case_文件夹名.json`
+- 用户指定：使用 `--output` 参数指定的文件名
 - 内容：动漫信息和本地文件信息，不包含AI分析结果
+- 包含 `path_name` 字段（文件夹名称，不含完整路径）
 
-#### AI分析结果文件 (manual/auto/load模式)
-- 手动模式: `ai_manual_test_result_{provider}_{timestamp}.json`
-- 自动模式: `ai_auto_test_result_{provider}_{timestamp}.json`
-- 加载模式: `ai_test_result_{provider}_{timestamp}.json`
+#### AI分析结果文件 (manual/auto模式)
+- 手动模式: `manual_路径名_{provider}_{timestamp}.json`
+- 自动模式: `auto_路径名_{provider}_{timestamp}.json`
+- 路径名来源：从 `--path` 提取文件夹名或从测试用例的 `path_name` 字段
 
 #### 结果文件内容
 
 AI分析结果文件包含：
-- **测试元数据**：模式、提供商、时间戳等
+- **测试元数据**：模式、提供商、时间戳、路径名称等
 - **动漫信息和本地文件信息**：TMDB数据和文件列表
 - **AI分析结果**：季度映射、文件映射、置信度等
 - **文件映射分析报告**：
@@ -164,6 +228,14 @@ AI分析结果文件包含：
   - `ai_generated_extra`: AI生成的多余路径列表
   - `mapping_accuracy`: 映射准确率 (0.0-1.0)
 - **原始LLM响应**（手动模式）
+
+#### 测试结果复用
+
+测试结果文件可以直接作为输入用例使用：
+```bash
+# 使用之前的测试结果进行新的测试
+python tests/test_ai_recognition.py --mode auto --input auto_MyAnime_gemini_20250710_123456.json --provider openai
+```
 
 ## 期待社区贡献
 

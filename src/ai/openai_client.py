@@ -21,7 +21,7 @@ class OpenAIClient:
         self.confidence_threshold = cm.get_config("ai_confidence_threshold")
 
         # 支持多种输出格式
-        self.output_format = cm.get_config("openai_output_format") or "function_calling"
+        self.output_format = cm.get_config("openai_output_format") or "text"
 
         if self.enabled and self.api_key:
             self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
@@ -67,7 +67,7 @@ class OpenAIClient:
 
             # 使用通用系统提示词
             system_prompt = AIClient.get_system_prompt()
-            if not self.json_mode:
+            if not self.output_format in ["function_calling", "structured_output"]:
                 system_prompt += " 请严格按照指定的JSON格式返回分析结果。"
 
             messages = [
