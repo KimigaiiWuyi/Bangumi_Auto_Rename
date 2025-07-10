@@ -117,12 +117,12 @@ class AIProcessor:
 
                 # 生成新的文件名
                 if episode_type in ["special", "ova"]:
-                    new_video_filename = f"S00E{tmdb_episode:02d} - {source_path.name}"
+                    new_video_filename = f"S00E{tmdb_episode:02d}{source_path.suffix}"
                 elif episode_type == "movie":
                     new_video_filename = source_path.name
                 else:
                     new_video_filename = (
-                        f"S{tmdb_season:02d}E{tmdb_episode:02d} - {source_path.name}"
+                        f"S{tmdb_season:02d}E{tmdb_episode:02d}{source_path.suffix}"
                     )
 
                 # 1. 添加视频文件自身的映射
@@ -134,17 +134,20 @@ class AIProcessor:
                 )
 
                 # 2. 查找并添加关联文件的映射
-                video_stem = source_path.stem
+                video_filename = source_path.stem
                 for other_file in all_local_files:
                     if not other_file.is_file() or other_file == source_path:
                         continue
 
-                    # 检查是否为关联文件
-                    if other_file.stem.startswith(video_stem):
-                        # 构建关联文件的新文件名
-                        new_associated_filename = (
-                            new_video_filename.rsplit(".", 1)[0] + other_file.suffix
-                        )
+                    # 检查是否为关联文件：完整文件名包含"视频文件名."的就是关联文件
+                    if other_file.name.startswith(f"{video_filename}."):
+                        # 提取关联文件的后缀部分（保留所有后缀，如 .lang.ass）
+                        suffix_part = other_file.name[len(video_filename):]
+
+                        # 构建关联文件的新文件名：新视频文件名（不含扩展名）+ 关联文件后缀
+                        new_video_stem = new_video_filename.rsplit(".", 1)[0]
+                        new_associated_filename = f"{new_video_stem}{suffix_part}"
+
                         target_associated_path = target_dir / new_associated_filename
                         new_mapping[other_file] = target_associated_path
                         logger.info(
