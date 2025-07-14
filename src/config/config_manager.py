@@ -1,7 +1,6 @@
 import json
-import re
-from typing import Any, Dict
 from urllib.parse import urlparse
+from typing import Any, Dict, Union
 
 from ..utils.path import CONFIG_PATH
 
@@ -96,10 +95,10 @@ class ConfigManager:
         else:
             return ''
 
-    def set_config(self, key: str, value: str) -> bool:
+    def set_config(self, key: str, value: Union[str, bool]) -> bool:
         if key in CONFIG_DEFAULT:
             # 对URL类型的配置项进行特殊处理
-            if key.endswith('_base_url') and value:
+            if key.endswith('_base_url') and value and isinstance(value, str):
                 value = self._normalize_url(value)
 
             # 设置值

@@ -59,7 +59,9 @@ class ConfigPage(ui.dialog):
 
             # AI API测试功能
             with ui.row(wrap=False).classes("w-full justify-center mt-4"):
-                RedButton("🧪 测试OpenAI API功能", on_click=self._test_openai_api).props("outline")
+                RedButton(
+                    "🧪 测试OpenAI API功能", on_click=self._test_openai_api
+                ).props("outline")
 
             ui.separator()
 
@@ -112,7 +114,12 @@ class ConfigPage(ui.dialog):
                         tg.classes("flex no-wrap w-full")
                     elif cn == "openai_output_format":
                         tg = RedToogle(
-                            ["function_calling", "json_object", "structured_output", "text"],
+                            [
+                                "function_calling",
+                                "json_object",
+                                "structured_output",
+                                "text",
+                            ],
                             value=cm.get_config(cn) or "function_calling",
                             on_change=lambda e, c=cn: self._change(c, e.value),
                         )
@@ -153,7 +160,10 @@ class ConfigPage(ui.dialog):
             if hasattr(self.config, url_config):
                 url_value = getattr(self.config, url_config)
                 if url_value and not cm.validate_url(url_value):
-                    ui.notify(f"❌ {CN_MAP.get(url_config, url_config)} 格式无效", type="negative")
+                    ui.notify(
+                        f"❌ {CN_MAP.get(url_config, url_config)} 格式无效",
+                        type="negative",
+                    )
                     return
 
         # 保存所有配置
@@ -170,8 +180,12 @@ class ConfigPage(ui.dialog):
         """测试OpenAI API功能支持情况"""
         try:
             # 获取当前配置
-            api_key = getattr(self.config, "ai_api_key", "") or cm.get_config("ai_api_key")
-            base_url = getattr(self.config, "ai_base_url", "") or cm.get_config("ai_base_url")
+            api_key = getattr(self.config, "ai_api_key", "") or cm.get_config(
+                "ai_api_key"
+            )
+            base_url = getattr(self.config, "ai_base_url", "") or cm.get_config(
+                "ai_base_url"
+            )
             model = getattr(self.config, "ai_model", "") or cm.get_config("ai_model")
 
             if not api_key:
@@ -193,6 +207,7 @@ class ConfigPage(ui.dialog):
 
             # 重新初始化客户端
             from openai import OpenAI
+
             temp_client.client = OpenAI(api_key=api_key, base_url=base_url)
 
             # 执行测试
@@ -215,27 +230,41 @@ class ConfigPage(ui.dialog):
             with ui.column().classes("w-full gap-2"):
                 # JSON Mode
                 json_icon = "✅" if results.get("json_mode_supported", False) else "❌"
-                ui.label(f"{json_icon} JSON Mode: {'支持' if results.get('json_mode_supported', False) else '不支持'}")
+                ui.label(
+                    f"{json_icon} JSON Mode: {'支持' if results.get('json_mode_supported', False) else '不支持'}"
+                )
 
                 # Structured Output
-                struct_icon = "✅" if results.get("structured_output_supported", False) else "❌"
-                ui.label(f"{struct_icon} Structured Output: {'支持' if results.get('structured_output_supported', False) else '不支持'}")
+                struct_icon = (
+                    "✅" if results.get("structured_output_supported", False) else "❌"
+                )
+                ui.label(
+                    f"{struct_icon} Structured Output: {'支持' if results.get('structured_output_supported', False) else '不支持'}"
+                )
 
                 # Function Calling
-                func_icon = "✅" if results.get("function_calling_supported", False) else "❌"
-                ui.label(f"{func_icon} Function Calling: {'支持' if results.get('function_calling_supported', False) else '不支持'}")
+                func_icon = (
+                    "✅" if results.get("function_calling_supported", False) else "❌"
+                )
+                ui.label(
+                    f"{func_icon} Function Calling: {'支持' if results.get('function_calling_supported', False) else '不支持'}"
+                )
 
                 # 推荐配置
                 ui.separator()
                 ui.label("💡 推荐配置:").classes("font-bold")
                 if results.get("function_calling_supported", False):
-                    ui.label("建议使用 Function Calling 模式（最稳定）").classes("text-green")
+                    ui.label("建议使用 Function Calling 模式（最稳定）").classes(
+                        "text-green"
+                    )
                 elif results.get("structured_output_supported", False):
                     ui.label("建议使用 Structured Output 模式").classes("text-blue")
                 elif results.get("json_mode_supported", False):
                     ui.label("建议使用 JSON Object 模式").classes("text-orange")
                 else:
-                    ui.label("建议使用 Text 模式（需要手动解析JSON）").classes("text-red")
+                    ui.label("建议使用 Text 模式（需要手动解析JSON）").classes(
+                        "text-red"
+                    )
 
                 # 显示错误信息（如果有）
                 if results.get("errors"):

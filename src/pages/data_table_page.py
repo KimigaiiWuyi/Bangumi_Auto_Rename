@@ -39,11 +39,11 @@ def create_table():
             status = task_data['error']
         else:
             status = '成功'
-        
+
         # 检查是否使用了AI
         ai_used = task_data.get('use_ai', False)
         ai_status = '是' if ai_used else '否'
-        
+
         rows.append(
             {
                 'id': index,

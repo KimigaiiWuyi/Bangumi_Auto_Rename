@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 
 from ..logger import logger
 from .utils import VIDEO_SUFFIX
@@ -142,7 +142,9 @@ class AIProcessor:
                     # 检查是否为关联文件：完整文件名包含"视频文件名."的就是关联文件
                     if other_file.name.startswith(f"{video_filename}."):
                         # 提取关联文件的后缀部分（保留所有后缀，如 .lang.ass）
-                        suffix_part = other_file.name[len(video_filename):]
+                        suffix_part = other_file.name[
+                            len(video_filename) :  # noqa: E203
+                        ]
 
                         # 构建关联文件的新文件名：新视频文件名（不含扩展名）+ 关联文件后缀
                         new_video_stem = new_video_filename.rsplit(".", 1)[0]

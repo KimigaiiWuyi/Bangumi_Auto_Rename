@@ -57,18 +57,22 @@ class EditPage(ui.dialog):
         with self, ui.card().style(_s).classes('flex'):
             ui.label('编辑任务').style('font-size: 20px; font-weight: bold')
             ui.separator()
-            
+
             # 基本信息
-            ui.label('基本信息').style('font-size: 16px; font-weight: bold; margin-top: 10px;')
+            ui.label('基本信息').style(
+                'font-size: 16px; font-weight: bold; margin-top: 10px;'
+            )
             basic_fields = ['is_anime', 'name', 'season_id', 'is_movie']
             for key in basic_fields:
                 if key in task_data:
                     self._create_field_row(key, task_data[key])
-            
+
             ui.separator().style('margin: 20px 0;')
-            
+
             # AI设置
-            ui.label('AI设置').style('font-size: 16px; font-weight: bold; margin-top: 10px;')
+            ui.label('AI设置').style(
+                'font-size: 16px; font-weight: bold; margin-top: 10px;'
+            )
             self._create_field_row('use_ai', task_data.get('use_ai', True))
 
             ui.separator()
@@ -85,7 +89,7 @@ class EditPage(ui.dialog):
                     # 配置标签
                     label = TASK_MAP.get(key, key)
                     ui.label(label).style('min-width: 120px')
-                    
+
                     if key in ['is_anime', 'is_movie']:
                         tg = RedToogle(
                             ['是', '否', '自动'],
@@ -98,7 +102,9 @@ class EditPage(ui.dialog):
                         tg = RedToogle(
                             ['启用', '禁用'],
                             value='启用' if value else '禁用',
-                            on_change=lambda e, c=key: self._change(c, e.value == '启用'),
+                            on_change=lambda e, c=key: self._change(
+                                c, e.value == '启用'
+                            ),
                         )
                         tg.style('font-size: 10px')
                         tg.classes('flex no-wrap w-full')
@@ -106,7 +112,9 @@ class EditPage(ui.dialog):
                         ui.input(
                             value=getattr(self.data, key),
                             on_change=lambda e, c=key: self._change(c, e.value),
-                        ).props('filled').props('dense').style('flex-grow: 2').bind_value(
+                        ).props('filled').props('dense').style(
+                            'flex-grow: 2'
+                        ).bind_value(
                             self.data, key
                         )
 
@@ -118,15 +126,16 @@ class EditPage(ui.dialog):
         logger.info(f'[任务] 任务{self.uuid}已修改为： {self.data.__dict__}')
         notify('修改成功！重新开始识别！')
         self.close()
-        
+
         # 根据use_ai设置决定是否使用AI
         use_ai = getattr(self.data, 'use_ai', True)
         if not use_ai:
             # 临时禁用AI
             from ..config.config_manager import cm
+
             original_ai_enabled = cm.get_config('ai_enabled')
             cm.set_config('ai_enabled', False)
-        
+
         try:
             Rename().process(
                 Path(getattr(self.data, 'path')),

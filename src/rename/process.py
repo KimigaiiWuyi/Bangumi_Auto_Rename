@@ -1,4 +1,3 @@
-from math import log
 import re
 import json
 import uuid
@@ -11,10 +10,10 @@ from jikanpy import Jikan
 from .trans import Trans
 from ..logger import logger
 from .get_info import Search
-from .ai_processor import AIProcessor
-from ..ai.models import AIAnalysisResult
 from ..utils.path import TASK_PATH
+from .ai_processor import AIProcessor
 from ..config.config_manager import cm
+from ..ai.models import AIAnalysisResult
 from .utils import S0_TAG, EXTRA_TAG, IGNORE_DIR, VIDEO_SUFFIX, IGNORE_SUFFIX
 from .cleaner import (
     remove_tag,

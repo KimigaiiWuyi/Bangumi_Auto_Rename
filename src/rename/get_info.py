@@ -48,7 +48,7 @@ class Search:
                 }
 
                 # 处理剧集信息
-                episodes = season_info.get("episodes", [])
+                episodes: List[Dict] = season_info.get("episodes", [])
                 for episode in episodes:
                     filtered_episode = {
                         "air_date": episode.get("air_date"),
