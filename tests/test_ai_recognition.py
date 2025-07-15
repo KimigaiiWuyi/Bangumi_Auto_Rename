@@ -435,7 +435,7 @@ class DataSaver:
             print("\n📋 季度信息:")
             for season in anime_info["seasons"]:
                 print(
-                    f"  第{season['season_number']}季: {season['name']} ({season['episode_count']}集)"
+                    f"  第{season['season_number']}季: {season['name']} ({len(season['episodes'])}集)"
                 )
 
         # 显示文件列表
