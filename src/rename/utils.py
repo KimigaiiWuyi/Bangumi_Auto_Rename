@@ -35,7 +35,7 @@ S0_TAG = [
 ]
 VIDEO_SUFFIX = [
     '.mp4',
-    '.mka',
+    # '.mka',   # 一般来说无需单独分析外挂音轨
     '.mkv',
     '.avi',
     '.wmv',
