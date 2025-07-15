@@ -57,11 +57,10 @@ class ConfigPage(ui.dialog):
             for cn in ai_configs:
                 self._create_config_row(cn)
 
-            # AI API测试功能
-            with ui.row(wrap=False).classes("w-full justify-center mt-4"):
-                RedButton(
-                    "🧪 测试OpenAI API功能", on_click=self._test_openai_api
-                ).props("outline")
+            # AI功能测试按钮
+            with ui.row(wrap=False).classes("w-full justify-center mt-4 gap-2"):
+                RedButton("🧪 测试AI识别功能", on_click=self._test_ai_recognition).props("outline")
+                RedButton("⚙️ 测试OpenAI API功能", on_click=self._test_openai_api).props("outline")
 
             ui.separator()
 
@@ -172,112 +171,191 @@ class ConfigPage(ui.dialog):
                 cn,
                 getattr(self.config, cn),
             )
-        logger.info('[配置] 配置已修改为： {}'.format(cm.config))
+        config_show = cm.config.copy()
+        for key in config_show.keys():
+            if "api_key" in key:
+                config_show[key] = len(str(config_show[key])) * "*"
+
+        logger.info('[配置] 配置已修改为： {}'.format(config_show))
         ui.notify("✅ 配置保存成功", type="positive")
         self.close()
 
-    def _test_openai_api(self):
-        """测试OpenAI API功能支持情况"""
-        try:
-            # 获取当前配置
-            api_key = getattr(self.config, "ai_api_key", "") or cm.get_config(
-                "ai_api_key"
-            )
-            base_url = getattr(self.config, "ai_base_url", "") or cm.get_config(
-                "ai_base_url"
-            )
-            model = getattr(self.config, "ai_model", "") or cm.get_config("ai_model")
+    def _get_current_ui_config(self) -> dict:
+        """获取当前界面的配置（未保存的）"""
+        current_config = {}
+        ai_config_keys = [
+            "ai_enabled", "ai_provider", "ai_confidence_threshold", "openai_output_format",
+            "ai_api_key", "ai_base_url", "ai_model",
+            "gemini_api_key", "gemini_base_url", "gemini_model"
+        ]
+        for key in ai_config_keys:
+            # 优先使用界面中的值，如果没有则使用配置文件中的值
+            if hasattr(self.config, key):
+                current_config[key] = getattr(self.config, key)
+            else:
+                current_config[key] = cm.get_config(key)
+        return current_config
 
-            if not api_key:
+    async def _test_ai_recognition(self):
+        """测试AI识别功能（使用当前界面配置）"""
+        try:
+            ui.notify("🧪 开始测试AI识别功能，请稍候...", type="info")
+            current_config = self._get_current_ui_config()
+
+            from ..ai.unified_ai_tester import UnifiedAITester
+            tester = UnifiedAITester(current_config)
+
+            import asyncio
+            result = await asyncio.get_event_loop().run_in_executor(
+                None, tester.test_ai_recognition
+            )
+
+            self._show_ai_test_results(result)
+        except Exception as e:
+            logger.error(f"[配置] AI识别测试失败: {str(e)}")
+            ui.notify(f"❌ AI识别测试失败: {str(e)}", type="negative")
+
+    async def _test_openai_api(self):
+        """测试OpenAI API功能（使用当前界面配置，测试多种输出格式）"""
+        try:
+            ui.notify("⚙️ 开始测试OpenAI API功能，请稍候...", type="info")
+            current_config = self._get_current_ui_config()
+
+            # 检查基本配置
+            if not current_config.get("ai_api_key"):
                 ui.notify("❌ 请先配置OpenAI API密钥", type="negative")
                 return
 
-            # 显示测试开始通知
-            ui.notify("🧪 开始测试API功能，请稍候...", type="info")
+            if current_config.get("ai_provider", "openai").lower() != "openai":
+                ui.notify("❌ 此测试仅支持OpenAI提供商", type="negative")
+                return
 
-            # 导入OpenAI客户端进行测试
-            from ..ai.openai_client import OpenAIClient
+            from ..ai.unified_ai_tester import UnifiedAITester
+            tester = UnifiedAITester(current_config)
 
-            # 创建临时客户端实例进行测试
-            temp_client = OpenAIClient()
-            temp_client.api_key = api_key
-            temp_client.base_url = base_url
-            temp_client.model = model
-            temp_client.enabled = True
+            import asyncio
+            results = await asyncio.get_event_loop().run_in_executor(
+                None, tester.test_openai_api_formats
+            )
 
-            # 重新初始化客户端
-            from openai import OpenAI
-
-            temp_client.client = OpenAI(api_key=api_key, base_url=base_url)
-
-            # 执行测试
-            results = temp_client.test_api_capabilities()
-
-            # 显示测试结果
-            self._show_test_results(results)
-
+            self._show_openai_formats_test_results(results)
         except Exception as e:
-            logger.error(f"[配置] API测试失败: {str(e)}")
-            ui.notify(f"❌ API测试失败: {str(e)}", type="negative")
+            logger.error(f"[配置] OpenAI API测试失败: {str(e)}")
+            ui.notify(f"❌ OpenAI API测试失败: {str(e)}", type="negative")
 
-    def _show_test_results(self, results: dict):
-        """显示API测试结果"""
-        # 创建结果对话框
-        with ui.dialog() as dialog, ui.card().classes("w-96"):
-            ui.label("🧪 OpenAI API功能测试结果").classes("text-h6 mb-4")
 
-            # 显示各项功能支持情况
-            with ui.column().classes("w-full gap-2"):
-                # JSON Mode
-                json_icon = "✅" if results.get("json_mode_supported", False) else "❌"
-                ui.label(
-                    f"{json_icon} JSON Mode: {'支持' if results.get('json_mode_supported', False) else '不支持'}"
-                )
 
-                # Structured Output
-                struct_icon = (
-                    "✅" if results.get("structured_output_supported", False) else "❌"
-                )
-                ui.label(
-                    f"{struct_icon} Structured Output: {'支持' if results.get('structured_output_supported', False) else '不支持'}"
-                )
+    def _show_ai_test_results(self, result: dict):
+        """显示AI识别测试结果"""
+        with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
+            ui.label("🧪 AI识别功能测试结果").classes("text-h6 mb-4")
 
-                # Function Calling
-                func_icon = (
-                    "✅" if results.get("function_calling_supported", False) else "❌"
-                )
-                ui.label(
-                    f"{func_icon} Function Calling: {'支持' if results.get('function_calling_supported', False) else '不支持'}"
-                )
+            # 配置提示
+            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes("text-sm text-blue mb-4")
 
-                # 推荐配置
-                ui.separator()
-                ui.label("💡 推荐配置:").classes("font-bold")
-                if results.get("function_calling_supported", False):
-                    ui.label("建议使用 Function Calling 模式（最稳定）").classes(
-                        "text-green"
-                    )
-                elif results.get("structured_output_supported", False):
-                    ui.label("建议使用 Structured Output 模式").classes("text-blue")
-                elif results.get("json_mode_supported", False):
-                    ui.label("建议使用 JSON Object 模式").classes("text-orange")
-                else:
-                    ui.label("建议使用 Text 模式（需要手动解析JSON）").classes(
-                        "text-red"
-                    )
+            with ui.column().classes("w-full gap-3"):
+                # 基本信息
+                success_icon = "✅" if result.get("success", False) else "❌"
+                ui.label(f"{success_icon} 测试状态: {'成功' if result.get('success', False) else '失败'}").classes("font-bold")
 
-                # 显示错误信息（如果有）
-                if results.get("errors"):
+                if result.get("error"):
+                    ui.label(f"❌ 错误信息: {result['error']}").classes("text-red")
+
+                # 配置信息
+                config_used = result.get("config_used", {})
+                provider = config_used.get("ai_provider", "unknown")
+                ui.label(f"🤖 AI提供商: {provider.upper()}")
+                ui.label(f"⏱️ 耗时: {result.get('duration', 0):.2f}秒")
+
+                if provider.lower() == "openai":
+                    output_format = config_used.get("openai_output_format", "unknown")
+                    ui.label(f"📋 输出格式: {output_format}")
+
+                # AI分析结果
+                if result.get("success") and result.get("validation"):
+                    validation = result["validation"]
                     ui.separator()
-                    ui.label("⚠️ 错误详情:").classes("font-bold text-red")
-                    for error in results.get("errors", []):
-                        ui.label(f"• {error}").classes("text-sm text-red")
+                    ui.label("📊 分析结果").classes("font-bold")
+
+                    confidence = validation.get("confidence", "None")
+                    ui.label(f"🎯 置信度: {confidence}")
+
+                    file_count = validation.get("file_mapping_count", 0)
+                    ui.label(f"📁 映射文件数: {file_count}")
+
+                    # 验证详情
+                    if "validation_details" in validation:
+                        details = validation["validation_details"]
+                        if "accuracy" in details:
+                            accuracy = details["accuracy"] * 100
+                            ui.label(f"✅ 准确率: {accuracy:.1f}%")
+                            ui.label(f"📈 匹配数: {details.get('matched_count', 0)}/{details.get('expected_count', 0)}")
 
             # 关闭按钮
             with ui.row().classes("w-full justify-end mt-4"):
                 RedButton("关闭", on_click=dialog.close)
 
         dialog.open()
+
+    def _show_openai_formats_test_results(self, results: dict):
+        """显示OpenAI多格式测试结果"""
+        with ui.dialog() as dialog, ui.card().classes("w-[700px]"):
+            ui.label("⚙️ OpenAI API多格式测试结果").classes("text-h6 mb-4")
+
+            # 配置提示
+            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes("text-sm text-blue mb-4")
+
+            with ui.column().classes("w-full gap-3"):
+                # 总体结果
+                overall_success = results.get("success", False)
+                success_icon = "✅" if overall_success else "❌"
+                ui.label(f"{success_icon} 总体状态: {'至少一种格式成功' if overall_success else '所有格式均失败'}").classes("font-bold")
+
+                if results.get("error"):
+                    ui.label(f"❌ 错误信息: {results['error']}").classes("text-red")
+
+                # 推荐格式
+                if overall_success:
+                    recommended = results.get("recommended_format", "text")
+                    ui.label(f"🌟 推荐格式: {recommended}").classes("text-green font-bold")
+
+                ui.separator()
+
+                # 各格式详细结果
+                format_results = results.get("format_results", [])
+                for format_result in format_results:
+                    output_format = format_result.get("output_format", "unknown")
+                    format_success = format_result.get("success", False)
+
+                    with ui.expansion(f"{'✅' if format_success else '❌'} {output_format}", icon="settings").classes("w-full"):
+                        with ui.column().classes("gap-2 p-2"):
+                            ui.label(f"状态: {'成功' if format_success else '失败'}")
+                            ui.label(f"耗时: {format_result.get('duration', 0):.2f}秒")
+
+                            if format_result.get("error"):
+                                ui.label(f"错误: {format_result['error']}").classes("text-red")
+
+                            if format_success and format_result.get("validation"):
+                                validation = format_result["validation"]
+                                confidence = validation.get("confidence", "None")
+                                ui.label(f"置信度: {confidence}")
+
+                                file_count = validation.get("file_mapping_count", 0)
+                                ui.label(f"映射文件数: {file_count}")
+
+                                if "validation_details" in validation:
+                                    details = validation["validation_details"]
+                                    if "accuracy" in details:
+                                        accuracy = details["accuracy"] * 100
+                                        ui.label(f"准确率: {accuracy:.1f}%")
+
+            # 关闭按钮
+            with ui.row().classes("w-full justify-end mt-4"):
+                RedButton("关闭", on_click=dialog.close)
+
+        dialog.open()
+
+
 
 
 async def config_page() -> None:
