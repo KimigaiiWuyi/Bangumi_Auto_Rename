@@ -47,6 +47,9 @@ class UnifiedAITester:
             if "api_key" in key:
                 value = len(str(value)) * '*'
             logger.debug(f"[AI识别测试] 设置配置 {key}: {value}")
+        if not cm.get_config("ai_enabled"):
+            cm.set_config("ai_enabled", True)
+            logger.debug("[AI识别测试] 未启用AI功能，暂时启用进行测试")
     
     def _restore_config(self):
         """恢复原始配置"""
@@ -206,11 +209,28 @@ class UnifiedAITester:
             expected = self._load_expected_result()
             validation = self._validate_ai_result(ai_result, expected)
 
+            # 分类结果状态
+            if ai_result is None:
+                result_status = "ai_failed"  # AI请求或解析失败
+            elif validation and validation.get("validation_details"):
+                details = validation["validation_details"]
+                accuracy = details.get("accuracy", 0)
+                missing_files = details.get("missing_files", [])
+                extra_files = details.get("extra_files", [])
+
+                if accuracy == 1.0 and len(missing_files) == 0 and len(extra_files) == 0:
+                    result_status = "perfect"  # 完全正确
+                else:
+                    result_status = "validation_failed"  # 结果验证不正确
+            else:
+                result_status = "validation_failed"  # 无法验证，视为验证失败
+
             result.update({
                 "success": ai_result is not None,
                 "ai_result": ai_result,
                 "validation": validation,
-                "provider": ai_client.provider
+                "provider": ai_client.provider,
+                "result_status": result_status
             })
 
             logger.info(f"[AI识别测试] AI分析完成 - 成功: {result['success']}")

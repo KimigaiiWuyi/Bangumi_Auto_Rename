@@ -254,12 +254,27 @@ class ConfigPage(ui.dialog):
             ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes("text-sm text-blue mb-4")
 
             with ui.column().classes("w-full gap-3"):
-                # 基本信息
-                success_icon = "✅" if result.get("success", False) else "❌"
-                ui.label(f"{success_icon} 测试状态: {'成功' if result.get('success', False) else '失败'}").classes("font-bold")
+                # 基本信息 - 根据结果状态显示
+                result_status = result.get("result_status", "unknown")
 
-                if result.get("error"):
-                    ui.label(f"❌ 错误信息: {result['error']}").classes("text-red")
+                if result_status == "perfect":
+                    status_icon = "✅"
+                    status_text = "完全正确"
+                    status_color = "text-green"
+                elif result_status == "validation_failed":
+                    status_icon = "⚠️"
+                    status_text = "验证失败"
+                    status_color = "text-orange"
+                elif result_status == "ai_failed":
+                    status_icon = "❌"
+                    status_text = "AI失败"
+                    status_color = "text-red"
+                else:
+                    status_icon = "❓"
+                    status_text = "未知状态"
+                    status_color = "text-gray"
+
+                ui.label(f"{status_icon} 测试状态: {status_text}").classes(f"font-bold {status_color}")
 
                 # 配置信息
                 config_used = result.get("config_used", {})
@@ -271,8 +286,17 @@ class ConfigPage(ui.dialog):
                     output_format = config_used.get("openai_output_format", "unknown")
                     ui.label(f"📋 输出格式: {output_format}")
 
-                # AI分析结果
-                if result.get("success") and result.get("validation"):
+                # AI失败情况：显示错误信息
+                if result_status == "ai_failed":
+                    ui.separator()
+                    ui.label("❌ 错误详情").classes("font-bold text-red")
+                    if result.get("error"):
+                        ui.label(f"错误信息: {result['error']}").classes("text-red")
+                    else:
+                        ui.label("AI分析返回None，可能是API调用失败或解析错误").classes("text-red")
+
+                # 验证失败和完全正确情况：显示详细结果
+                elif result_status in ["validation_failed", "perfect"] and result.get("validation"):
                     validation = result["validation"]
                     ui.separator()
                     ui.label("📊 分析结果").classes("font-bold")
@@ -288,8 +312,32 @@ class ConfigPage(ui.dialog):
                         details = validation["validation_details"]
                         if "accuracy" in details:
                             accuracy = details["accuracy"] * 100
-                            ui.label(f"✅ 准确率: {accuracy:.1f}%")
-                            ui.label(f"📈 匹配数: {details.get('matched_count', 0)}/{details.get('expected_count', 0)}")
+                            accuracy_color = "text-green" if accuracy == 100 else "text-orange"
+                            ui.label(f"✅ 准确率: {accuracy:.1f}%").classes(accuracy_color)
+
+                            matched_count = details.get("matched_count", 0)
+                            expected_count = details.get("expected_count", 0)
+                            ui.label(f"📈 匹配情况: {matched_count}/{expected_count}")
+
+                            # 显示详细的文件匹配情况
+                            missing_files = details.get("missing_files", [])
+                            extra_files = details.get("extra_files", [])
+                            matched_files = details.get("matched_files", [])
+
+                            if matched_files:
+                                ui.label(f"✅ 正确匹配 ({len(matched_files)}):").classes("text-green font-bold")
+                                for file_path in matched_files:
+                                    ui.label(f"  • {file_path}").classes("text-sm text-green")
+
+                            if missing_files:
+                                ui.label(f"❌ 遗漏文件 ({len(missing_files)}):").classes("text-red font-bold")
+                                for file_path in missing_files:
+                                    ui.label(f"  • {file_path}").classes("text-sm text-red")
+
+                            if extra_files:
+                                ui.label(f"⚠️ 多余文件 ({len(extra_files)}):").classes("text-orange font-bold")
+                                for file_path in extra_files:
+                                    ui.label(f"  • {file_path}").classes("text-sm text-orange")
 
             # 关闭按钮
             with ui.row().classes("w-full justify-end mt-4"):
@@ -325,17 +373,40 @@ class ConfigPage(ui.dialog):
                 format_results = results.get("format_results", [])
                 for format_result in format_results:
                     output_format = format_result.get("output_format", "unknown")
-                    format_success = format_result.get("success", False)
+                    result_status = format_result.get("result_status", "unknown")
 
-                    with ui.expansion(f"{'✅' if format_success else '❌'} {output_format}", icon="settings").classes("w-full"):
+                    # 根据结果状态确定图标和标题
+                    if result_status == "perfect":
+                        icon = "✅"
+                        status_text = "完全正确"
+                        status_color = "text-green"
+                    elif result_status == "validation_failed":
+                        icon = "⚠️"
+                        status_text = "验证失败"
+                        status_color = "text-orange"
+                    elif result_status == "ai_failed":
+                        icon = "❌"
+                        status_text = "AI失败"
+                        status_color = "text-red"
+                    else:
+                        icon = "❓"
+                        status_text = "未知状态"
+                        status_color = "text-gray"
+
+                    with ui.expansion(f"{icon} {output_format} - {status_text}", icon="settings").classes("w-full"):
                         with ui.column().classes("gap-2 p-2"):
-                            ui.label(f"状态: {'成功' if format_success else '失败'}")
+                            ui.label(f"状态: {status_text}").classes(status_color + " font-bold")
                             ui.label(f"耗时: {format_result.get('duration', 0):.2f}秒")
 
-                            if format_result.get("error"):
-                                ui.label(f"错误: {format_result['error']}").classes("text-red")
+                            # AI失败情况：显示错误信息
+                            if result_status == "ai_failed":
+                                if format_result.get("error"):
+                                    ui.label(f"错误详情: {format_result['error']}").classes("text-red")
+                                else:
+                                    ui.label("AI分析返回None，可能是API调用失败或解析错误").classes("text-red")
 
-                            if format_success and format_result.get("validation"):
+                            # 验证失败和完全正确情况：显示详细结果
+                            elif result_status in ["validation_failed", "perfect"] and format_result.get("validation"):
                                 validation = format_result["validation"]
                                 confidence = validation.get("confidence", "None")
                                 ui.label(f"置信度: {confidence}")
@@ -347,7 +418,32 @@ class ConfigPage(ui.dialog):
                                     details = validation["validation_details"]
                                     if "accuracy" in details:
                                         accuracy = details["accuracy"] * 100
-                                        ui.label(f"准确率: {accuracy:.1f}%")
+                                        accuracy_color = "text-green" if accuracy == 100 else "text-orange"
+                                        ui.label(f"准确率: {accuracy:.1f}%").classes(accuracy_color)
+
+                                        matched_count = details.get("matched_count", 0)
+                                        expected_count = details.get("expected_count", 0)
+                                        ui.label(f"匹配情况: {matched_count}/{expected_count}")
+
+                                        # 显示详细的文件匹配情况
+                                        missing_files = details.get("missing_files", [])
+                                        extra_files = details.get("extra_files", [])
+                                        matched_files = details.get("matched_files", [])
+
+                                        if matched_files:
+                                            ui.label(f"✅ 正确匹配 ({len(matched_files)}):").classes("text-green font-bold")
+                                            for file_path in matched_files:
+                                                ui.label(f"  • {file_path}").classes("text-sm text-green")
+
+                                        if missing_files:
+                                            ui.label(f"❌ 遗漏文件 ({len(missing_files)}):").classes("text-red font-bold")
+                                            for file_path in missing_files:
+                                                ui.label(f"  • {file_path}").classes("text-sm text-red")
+
+                                        if extra_files:
+                                            ui.label(f"⚠️ 多余文件 ({len(extra_files)}):").classes("text-orange font-bold")
+                                            for file_path in extra_files:
+                                                ui.label(f"  • {file_path}").classes("text-sm text-orange")
 
             # 关闭按钮
             with ui.row().classes("w-full justify-end mt-4"):
