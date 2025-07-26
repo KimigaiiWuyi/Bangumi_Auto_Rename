@@ -16,18 +16,17 @@
 import json
 import time
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from ..logger import logger
-from ..config.config_manager import cm
 from ..ai.client import AIClient
+from ..config.config_manager import cm
 from ..ai.models import AIAnalysisResult
 
 
 class UnifiedAITester:
     """统一的AI测试器，使用当前界面配置进行测试"""
-    
+
     def __init__(self, current_config: Dict[str, Any]):
         """
         Args:
@@ -35,9 +34,13 @@ class UnifiedAITester:
         """
         self.current_config = current_config
         self.original_config = {}
-        self.test_case_path = Path(__file__).parent.parent.parent / "tests" / "example_test_case.json"
-        self.expected_path = Path(__file__).parent.parent.parent / "tests" / "example_expected.json"
-        
+        self.test_case_path = (
+            Path(__file__).parent.parent.parent / "tests" / "example_test_case.json"
+        )
+        self.expected_path = (
+            Path(__file__).parent.parent.parent / "tests" / "example_expected.json"
+        )
+
     def _apply_current_config(self):
         """应用当前界面配置"""
         logger.info("[AI识别测试] 应用当前界面配置")
@@ -50,7 +53,7 @@ class UnifiedAITester:
         if not cm.get_config("ai_enabled"):
             cm.set_config("ai_enabled", True)
             logger.debug("[AI识别测试] 未启用AI功能，暂时启用进行测试")
-    
+
     def _restore_config(self):
         """恢复原始配置"""
         logger.info("[AI识别测试] 恢复原始配置")
@@ -60,29 +63,31 @@ class UnifiedAITester:
                 value = len(str(value)) * '*'
             logger.debug(f"[AI识别测试] 恢复配置 {key}: {value}")
         self.original_config.clear()
-    
+
     def _load_test_case(self) -> Optional[Dict[str, Any]]:
         """加载测试用例"""
         try:
             if not self.test_case_path.exists():
                 logger.error(f"[AI识别测试] 测试用例文件不存在: {self.test_case_path}")
                 return None
-                
+
             with open(self.test_case_path, 'r', encoding='utf-8') as f:
                 test_case = json.load(f)
-                logger.info(f"[AI识别测试] 成功加载测试用例: {test_case.get('metadata', {}).get('path_name', 'Unknown')}")
+                logger.info(
+                    f"[AI识别测试] 成功加载测试用例: {test_case.get('metadata', {}).get('path_name', 'Unknown')}"
+                )
                 return test_case
         except Exception as e:
             logger.error(f"[AI识别测试] 加载测试用例失败: {str(e)}")
             return None
-    
+
     def _load_expected_result(self) -> Optional[Dict[str, Any]]:
         """加载期望结果"""
         try:
             if not self.expected_path.exists():
                 logger.warning(f"[AI识别测试] 期望结果文件不存在: {self.expected_path}")
                 return None
-                
+
             with open(self.expected_path, 'r', encoding='utf-8') as f:
                 expected = json.load(f)
                 logger.info("[AI识别测试] 成功加载期望结果")
@@ -90,14 +95,16 @@ class UnifiedAITester:
         except Exception as e:
             logger.error(f"[AI识别测试] 加载期望结果失败: {str(e)}")
             return None
-    
-    def _validate_ai_result(self, ai_result: AIAnalysisResult, expected: Optional[Dict] = None) -> Dict[str, Any]:
+
+    def _validate_ai_result(
+        self, ai_result: AIAnalysisResult, expected: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """验证AI分析结果"""
         validation_result = {
             "success": False,
             "confidence": ai_result.confidence if ai_result else "None",
             "file_mapping_count": 0,
-            "validation_details": {}
+            "validation_details": {},
         }
 
         if not ai_result:
@@ -120,7 +127,7 @@ class UnifiedAITester:
                     "tmdb_season": item["tmdb_season"],
                     "tmdb_episode": item["tmdb_episode"],
                     "episode_type": item.get("episode_type", "regular"),
-                    "confidence": item.get("confidence", "Medium")
+                    "confidence": item.get("confidence", "Medium"),
                 }
 
             # 将AI结果转换为字典，key为file_path
@@ -131,7 +138,7 @@ class UnifiedAITester:
                     "tmdb_season": item.tmdb_season,
                     "tmdb_episode": item.tmdb_episode,
                     "episode_type": item.episode_type,
-                    "confidence": item.confidence
+                    "confidence": item.confidence,
                 }
 
             # 计算匹配情况
@@ -145,9 +152,11 @@ class UnifiedAITester:
                 if file_path in actual_mapping:
                     actual_info = actual_mapping[file_path]
                     # 检查关键字段是否匹配（不包括confidence）
-                    if (actual_info["tmdb_season"] == expected_info["tmdb_season"] and
-                        actual_info["tmdb_episode"] == expected_info["tmdb_episode"] and
-                        actual_info["episode_type"] == expected_info["episode_type"]):
+                    if (
+                        actual_info["tmdb_season"] == expected_info["tmdb_season"]
+                        and actual_info["tmdb_episode"] == expected_info["tmdb_episode"]
+                        and actual_info["episode_type"] == expected_info["episode_type"]
+                    ):
                         matched_count += 1
                         matched_files.append(file_path)
                 else:
@@ -165,7 +174,7 @@ class UnifiedAITester:
                 "accuracy": matched_count / total_expected if total_expected > 0 else 0,
                 "matched_files": matched_files,
                 "missing_files": missing_files,
-                "extra_files": extra_files
+                "extra_files": extra_files,
             }
 
         return validation_result
@@ -179,7 +188,7 @@ class UnifiedAITester:
             "duration": 0,
             "ai_result": None,
             "validation": None,
-            "config_used": self.current_config.copy()
+            "config_used": self.current_config.copy(),
         }
 
         try:
@@ -201,9 +210,13 @@ class UnifiedAITester:
             # 执行AI分析
             logger.info(f"[AI识别测试] 开始AI分析 - 提供商: {ai_client.provider}")
             ai_result = ai_client.analyze_episode_mapping(
-                test_case["anime_info"],
-                test_case["local_files"]
+                test_case["anime_info"], test_case["local_files"]
             )
+
+            # TODO
+            if ai_result is None:
+                result["error"] = "AI分析失败，返回None"
+                return result
 
             # 加载期望结果并验证
             expected = self._load_expected_result()
@@ -218,20 +231,26 @@ class UnifiedAITester:
                 missing_files = details.get("missing_files", [])
                 extra_files = details.get("extra_files", [])
 
-                if accuracy == 1.0 and len(missing_files) == 0 and len(extra_files) == 0:
+                if (
+                    accuracy == 1.0
+                    and len(missing_files) == 0
+                    and len(extra_files) == 0
+                ):
                     result_status = "perfect"  # 完全正确
                 else:
                     result_status = "validation_failed"  # 结果验证不正确
             else:
                 result_status = "validation_failed"  # 无法验证，视为验证失败
 
-            result.update({
-                "success": ai_result is not None,
-                "ai_result": ai_result,
-                "validation": validation,
-                "provider": ai_client.provider,
-                "result_status": result_status
-            })
+            result.update(
+                {
+                    "success": ai_result is not None,
+                    "ai_result": ai_result,
+                    "validation": validation,
+                    "provider": ai_client.provider,
+                    "result_status": result_status,
+                }
+            )
 
             logger.info(f"[AI识别测试] AI分析完成 - 成功: {result['success']}")
 
@@ -280,10 +299,12 @@ class UnifiedAITester:
             "success": len(successful_formats) > 0,
             "format_results": format_results,
             "successful_formats": successful_formats,
-            "recommended_format": self._get_recommended_format(format_results)
+            "recommended_format": self._get_recommended_format(format_results),
         }
 
-        logger.info(f"[AI识别测试] OpenAI多格式测试完成 - 成功格式: {successful_formats}")
+        logger.info(
+            f"[AI识别测试] OpenAI多格式测试完成 - 成功格式: {successful_formats}"
+        )
         return overall_result
 
     def _get_recommended_format(self, format_results: List[Dict[str, Any]]) -> str:
@@ -309,7 +330,11 @@ class UnifiedAITester:
                 extra_files = validation_details.get("extra_files", [])
 
                 # 必须100%准确率，且没有遗漏文件和多余文件
-                if accuracy == 1.0 and len(missing_files) == 0 and len(extra_files) == 0:
+                if (
+                    accuracy == 1.0
+                    and len(missing_files) == 0
+                    and len(extra_files) == 0
+                ):
                     is_perfect = True
 
             if is_perfect:

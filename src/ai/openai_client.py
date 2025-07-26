@@ -6,8 +6,8 @@ from openai import OpenAI
 from pydantic import ValidationError
 
 from ..logger import logger
-from ..config.config_manager import cm
 from .models import AIAnalysisResult
+from ..config.config_manager import cm
 
 
 class OpenAIClient:
@@ -39,11 +39,11 @@ class OpenAIClient:
     ) -> Optional[AIAnalysisResult]:
         """
         使用OpenAI API分析本地文件与TMDB剧集的映射关系
-        
+
         Args:
             anime_info: TMDB动漫信息
             local_files: 本地文件信息列表，包含文件名、路径、时长等
-            
+
         Returns:
             验证后的AIAnalysisResult对象
         """
@@ -67,7 +67,7 @@ class OpenAIClient:
 
             # 使用通用系统提示词
             system_prompt = AIClient.get_system_prompt()
-            if not self.output_format in ["function_calling", "structured_output"]:
+            if self.output_format not in ["function_calling", "structured_output"]:
                 system_prompt += " 请严格按照指定的JSON格式返回分析结果。"
 
             messages = [
@@ -131,7 +131,9 @@ class OpenAIClient:
                     json_data = json.loads(tool_call.function.arguments)
                 except json.JSONDecodeError as e:
                     logger.error(f"[OpenAI识别] 解析Tool-calling JSON失败: {e}")
-                    logger.error(f"[OpenAI识别] 原始数据: {tool_call.function.arguments}")
+                    logger.error(
+                        f"[OpenAI识别] 原始数据: {tool_call.function.arguments}"
+                    )
                     return None
         else:
             # 否则，从内容中提取
@@ -306,9 +308,7 @@ class OpenAIClient:
                 "type": "json_schema",
                 "json_schema": {
                     "name": "ai_analysis_result",
-                    "schema": AIAnalysisResult.model_json_schema()
-                }
+                    "schema": AIAnalysisResult.model_json_schema(),
+                },
             }
         # 如果是"text"格式，不添加任何特殊参数
-
-

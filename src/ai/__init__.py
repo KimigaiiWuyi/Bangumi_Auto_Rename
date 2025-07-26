@@ -9,9 +9,9 @@ AI模块 - 支持多种AI提供商的智能分析功能
 """
 
 from .client import AIClient
-from .openai_client import OpenAIClient
 from .gemini_client import GeminiClient
-from .models import AIAnalysisResult, SeasonMapping, EpisodeMapping
+from .openai_client import OpenAIClient
+from .models import SeasonMapping, EpisodeMapping, AIAnalysisResult
 
 __all__ = [
     "AIClient",

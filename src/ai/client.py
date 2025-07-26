@@ -2,10 +2,11 @@ import json
 from typing import Dict, List, Optional
 
 from ..logger import logger
-from ..config.config_manager import cm
 from .models import AIAnalysisResult
-from .openai_client import OpenAIClient
+from ..config.config_manager import cm
 from .gemini_client import GeminiClient
+from .openai_client import OpenAIClient
+
 
 class AIClient:
     """AI客户端工厂类，根据配置选择合适的AI提供商"""

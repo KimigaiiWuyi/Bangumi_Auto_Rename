@@ -61,7 +61,7 @@ structlog.configure(
 logger: structlog.stdlib.BoundLogger = structlog.get_logger()
 logging.getLogger('niceGUI').propagate = False
 
-#AI 库日志
+# AI 库日志
 logging.getLogger('openai').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)

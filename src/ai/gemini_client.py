@@ -3,18 +3,22 @@ from typing import Dict, List, Optional
 
 from google import genai
 from pydantic import ValidationError
+from google.genai.types import HttpOptions
 
 from ..logger import logger
-from ..config.config_manager import cm
 from .models import AIAnalysisResult
+from ..config.config_manager import cm
 
 
 class GeminiClient:
     """Google Gemini API客户端，支持结构化输出"""
-    
+
     def __init__(self):
         self.api_key = cm.get_config("gemini_api_key")
-        self.base_url = cm.get_config("gemini_base_url") or "https://generativelanguage.googleapis.com"
+        self.base_url = (
+            cm.get_config("gemini_base_url")
+            or "https://generativelanguage.googleapis.com"
+        )
         self.model = cm.get_config("gemini_model") or "gemini-2.5-flash"
         self.enabled = bool(cm.get_config("ai_enabled"))
         self.confidence_threshold = cm.get_config("ai_confidence_threshold")
@@ -22,12 +26,17 @@ class GeminiClient:
         if self.enabled and self.api_key:
             try:
                 # 构建http_options以支持自定义base_url
-                http_options = {}
-                if self.base_url and self.base_url != "https://generativelanguage.googleapis.com":
-                    http_options["base_url"] = self.base_url
+                http_options = HttpOptions()
+                if (
+                    self.base_url
+                    and self.base_url != "https://generativelanguage.googleapis.com"
+                ):
+                    http_options.base_url = self.base_url
 
                 if http_options:
-                    self.client = genai.Client(api_key=self.api_key, http_options=http_options)
+                    self.client = genai.Client(
+                        api_key=self.api_key, http_options=http_options
+                    )
                 else:
                     self.client = genai.Client(api_key=self.api_key)
 
@@ -49,11 +58,11 @@ class GeminiClient:
     ) -> Optional[AIAnalysisResult]:
         """
         使用Gemini API分析本地文件与TMDB剧集的映射关系
-        
+
         Args:
             anime_info: TMDB动漫信息
             local_files: 本地文件信息列表，包含文件名、路径、时长等
-            
+
         Returns:
             验证后的AIAnalysisResult对象
         """
@@ -105,13 +114,15 @@ class GeminiClient:
             if hasattr(response, 'parsed') and response.parsed:
                 logger.debug(f"[Gemini识别] 解析后的JSON: {response.parsed}")
                 result = AIAnalysisResult.model_validate(response.parsed)
-                logger.info(f"[Gemini识别] 使用解析后的结果，置信度: {result.confidence}")
+                logger.info(
+                    f"[Gemini识别] 使用解析后的结果，置信度: {result.confidence}"
+                )
                 return result
-            
+
             # 如果没有解析结果，尝试手动解析JSON
             try:
                 json_data = json.loads(response.text)
-                logger.debug(f"[Gemini识别] 手动解析的JSON成功")
+                logger.debug("[Gemini识别] 手动解析的JSON成功!")
                 result = AIAnalysisResult(**json_data)
                 logger.info(f"[Gemini识别] 手动解析成功，置信度: {result.confidence}")
                 return result

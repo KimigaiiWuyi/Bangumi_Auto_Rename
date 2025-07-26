@@ -59,8 +59,12 @@ class ConfigPage(ui.dialog):
 
             # AI功能测试按钮
             with ui.row(wrap=False).classes("w-full justify-center mt-4 gap-2"):
-                RedButton("🧪 测试AI识别功能", on_click=self._test_ai_recognition).props("outline")
-                RedButton("⚙️ 测试OpenAI API功能", on_click=self._test_openai_api).props("outline")
+                RedButton(
+                    "🧪 测试AI识别功能", on_click=self._test_ai_recognition
+                ).props("outline")
+                RedButton("⚙️ 测试OpenAI API功能", on_click=self._test_openai_api).props(
+                    "outline"
+                )
 
             ui.separator()
 
@@ -184,9 +188,16 @@ class ConfigPage(ui.dialog):
         """获取当前界面的配置（未保存的）"""
         current_config = {}
         ai_config_keys = [
-            "ai_enabled", "ai_provider", "ai_confidence_threshold", "openai_output_format",
-            "ai_api_key", "ai_base_url", "ai_model",
-            "gemini_api_key", "gemini_base_url", "gemini_model"
+            "ai_enabled",
+            "ai_provider",
+            "ai_confidence_threshold",
+            "openai_output_format",
+            "ai_api_key",
+            "ai_base_url",
+            "ai_model",
+            "gemini_api_key",
+            "gemini_base_url",
+            "gemini_model",
         ]
         for key in ai_config_keys:
             # 优先使用界面中的值，如果没有则使用配置文件中的值
@@ -203,9 +214,11 @@ class ConfigPage(ui.dialog):
             current_config = self._get_current_ui_config()
 
             from ..ai.unified_ai_tester import UnifiedAITester
+
             tester = UnifiedAITester(current_config)
 
             import asyncio
+
             result = await asyncio.get_event_loop().run_in_executor(
                 None, tester.test_ai_recognition
             )
@@ -231,9 +244,11 @@ class ConfigPage(ui.dialog):
                 return
 
             from ..ai.unified_ai_tester import UnifiedAITester
+
             tester = UnifiedAITester(current_config)
 
             import asyncio
+
             results = await asyncio.get_event_loop().run_in_executor(
                 None, tester.test_openai_api_formats
             )
@@ -243,15 +258,15 @@ class ConfigPage(ui.dialog):
             logger.error(f"[配置] OpenAI API测试失败: {str(e)}")
             ui.notify(f"❌ OpenAI API测试失败: {str(e)}", type="negative")
 
-
-
     def _show_ai_test_results(self, result: dict):
         """显示AI识别测试结果"""
         with ui.dialog() as dialog, ui.card().classes("w-[600px]"):
             ui.label("🧪 AI识别功能测试结果").classes("text-h6 mb-4")
 
             # 配置提示
-            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes("text-sm text-blue mb-4")
+            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes(
+                "text-sm text-blue mb-4"
+            )
 
             with ui.column().classes("w-full gap-3"):
                 # 基本信息 - 根据结果状态显示
@@ -274,7 +289,9 @@ class ConfigPage(ui.dialog):
                     status_text = "未知状态"
                     status_color = "text-gray"
 
-                ui.label(f"{status_icon} 测试状态: {status_text}").classes(f"font-bold {status_color}")
+                ui.label(f"{status_icon} 测试状态: {status_text}").classes(
+                    f"font-bold {status_color}"
+                )
 
                 # 配置信息
                 config_used = result.get("config_used", {})
@@ -293,10 +310,14 @@ class ConfigPage(ui.dialog):
                     if result.get("error"):
                         ui.label(f"错误信息: {result['error']}").classes("text-red")
                     else:
-                        ui.label("AI分析返回None，可能是API调用失败或解析错误").classes("text-red")
+                        ui.label("AI分析返回None，可能是API调用失败或解析错误").classes(
+                            "text-red"
+                        )
 
                 # 验证失败和完全正确情况：显示详细结果
-                elif result_status in ["validation_failed", "perfect"] and result.get("validation"):
+                elif result_status in ["validation_failed", "perfect"] and result.get(
+                    "validation"
+                ):
                     validation = result["validation"]
                     ui.separator()
                     ui.label("📊 分析结果").classes("font-bold")
@@ -312,8 +333,12 @@ class ConfigPage(ui.dialog):
                         details = validation["validation_details"]
                         if "accuracy" in details:
                             accuracy = details["accuracy"] * 100
-                            accuracy_color = "text-green" if accuracy == 100 else "text-orange"
-                            ui.label(f"✅ 准确率: {accuracy:.1f}%").classes(accuracy_color)
+                            accuracy_color = (
+                                "text-green" if accuracy == 100 else "text-orange"
+                            )
+                            ui.label(f"✅ 准确率: {accuracy:.1f}%").classes(
+                                accuracy_color
+                            )
 
                             matched_count = details.get("matched_count", 0)
                             expected_count = details.get("expected_count", 0)
@@ -325,19 +350,31 @@ class ConfigPage(ui.dialog):
                             matched_files = details.get("matched_files", [])
 
                             if matched_files:
-                                ui.label(f"✅ 正确匹配 ({len(matched_files)}):").classes("text-green font-bold")
+                                ui.label(
+                                    f"✅ 正确匹配 ({len(matched_files)}):"
+                                ).classes("text-green font-bold")
                                 for file_path in matched_files:
-                                    ui.label(f"  • {file_path}").classes("text-sm text-green")
+                                    ui.label(f"  • {file_path}").classes(
+                                        "text-sm text-green"
+                                    )
 
                             if missing_files:
-                                ui.label(f"❌ 遗漏文件 ({len(missing_files)}):").classes("text-red font-bold")
+                                ui.label(
+                                    f"❌ 遗漏文件 ({len(missing_files)}):"
+                                ).classes("text-red font-bold")
                                 for file_path in missing_files:
-                                    ui.label(f"  • {file_path}").classes("text-sm text-red")
+                                    ui.label(f"  • {file_path}").classes(
+                                        "text-sm text-red"
+                                    )
 
                             if extra_files:
-                                ui.label(f"⚠️ 多余文件 ({len(extra_files)}):").classes("text-orange font-bold")
+                                ui.label(f"⚠️ 多余文件 ({len(extra_files)}):").classes(
+                                    "text-orange font-bold"
+                                )
                                 for file_path in extra_files:
-                                    ui.label(f"  • {file_path}").classes("text-sm text-orange")
+                                    ui.label(f"  • {file_path}").classes(
+                                        "text-sm text-orange"
+                                    )
 
             # 关闭按钮
             with ui.row().classes("w-full justify-end mt-4"):
@@ -351,13 +388,17 @@ class ConfigPage(ui.dialog):
             ui.label("⚙️ OpenAI API多格式测试结果").classes("text-h6 mb-4")
 
             # 配置提示
-            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes("text-sm text-blue mb-4")
+            ui.label("💡 此测试使用界面中的配置，但不会保存配置").classes(
+                "text-sm text-blue mb-4"
+            )
 
             with ui.column().classes("w-full gap-3"):
                 # 总体结果
                 overall_success = results.get("success", False)
                 success_icon = "✅" if overall_success else "❌"
-                ui.label(f"{success_icon} 总体状态: {'至少一种格式成功' if overall_success else '所有格式均失败'}").classes("font-bold")
+                ui.label(
+                    f"{success_icon} 总体状态: {'至少一种格式成功' if overall_success else '所有格式均失败'}"
+                ).classes("font-bold")
 
                 if results.get("error"):
                     ui.label(f"❌ 错误信息: {results['error']}").classes("text-red")
@@ -365,7 +406,9 @@ class ConfigPage(ui.dialog):
                 # 推荐格式
                 if overall_success:
                     recommended = results.get("recommended_format", "text")
-                    ui.label(f"🌟 推荐格式: {recommended}").classes("text-green font-bold")
+                    ui.label(f"🌟 推荐格式: {recommended}").classes(
+                        "text-green font-bold"
+                    )
 
                 ui.separator()
 
@@ -393,20 +436,31 @@ class ConfigPage(ui.dialog):
                         status_text = "未知状态"
                         status_color = "text-gray"
 
-                    with ui.expansion(f"{icon} {output_format} - {status_text}", icon="settings").classes("w-full"):
+                    with ui.expansion(
+                        f"{icon} {output_format} - {status_text}", icon="settings"
+                    ).classes("w-full"):
                         with ui.column().classes("gap-2 p-2"):
-                            ui.label(f"状态: {status_text}").classes(status_color + " font-bold")
+                            ui.label(f"状态: {status_text}").classes(
+                                status_color + " font-bold"
+                            )
                             ui.label(f"耗时: {format_result.get('duration', 0):.2f}秒")
 
                             # AI失败情况：显示错误信息
                             if result_status == "ai_failed":
                                 if format_result.get("error"):
-                                    ui.label(f"错误详情: {format_result['error']}").classes("text-red")
+                                    ui.label(
+                                        f"错误详情: {format_result['error']}"
+                                    ).classes("text-red")
                                 else:
-                                    ui.label("AI分析返回None，可能是API调用失败或解析错误").classes("text-red")
+                                    ui.label(
+                                        "AI分析返回None，可能是API调用失败或解析错误"
+                                    ).classes("text-red")
 
                             # 验证失败和完全正确情况：显示详细结果
-                            elif result_status in ["validation_failed", "perfect"] and format_result.get("validation"):
+                            elif result_status in [
+                                "validation_failed",
+                                "perfect",
+                            ] and format_result.get("validation"):
                                 validation = format_result["validation"]
                                 confidence = validation.get("confidence", "None")
                                 ui.label(f"置信度: {confidence}")
@@ -418,12 +472,22 @@ class ConfigPage(ui.dialog):
                                     details = validation["validation_details"]
                                     if "accuracy" in details:
                                         accuracy = details["accuracy"] * 100
-                                        accuracy_color = "text-green" if accuracy == 100 else "text-orange"
-                                        ui.label(f"准确率: {accuracy:.1f}%").classes(accuracy_color)
+                                        accuracy_color = (
+                                            "text-green"
+                                            if accuracy == 100
+                                            else "text-orange"
+                                        )
+                                        ui.label(f"准确率: {accuracy:.1f}%").classes(
+                                            accuracy_color
+                                        )
 
                                         matched_count = details.get("matched_count", 0)
-                                        expected_count = details.get("expected_count", 0)
-                                        ui.label(f"匹配情况: {matched_count}/{expected_count}")
+                                        expected_count = details.get(
+                                            "expected_count", 0
+                                        )
+                                        ui.label(
+                                            f"匹配情况: {matched_count}/{expected_count}"
+                                        )
 
                                         # 显示详细的文件匹配情况
                                         missing_files = details.get("missing_files", [])
@@ -431,27 +495,37 @@ class ConfigPage(ui.dialog):
                                         matched_files = details.get("matched_files", [])
 
                                         if matched_files:
-                                            ui.label(f"✅ 正确匹配 ({len(matched_files)}):").classes("text-green font-bold")
+                                            ui.label(
+                                                f"✅ 正确匹配 ({len(matched_files)}):"
+                                            ).classes("text-green font-bold")
                                             for file_path in matched_files:
-                                                ui.label(f"  • {file_path}").classes("text-sm text-green")
+                                                ui.label(f"  • {file_path}").classes(
+                                                    "text-sm text-green"
+                                                )
 
                                         if missing_files:
-                                            ui.label(f"❌ 遗漏文件 ({len(missing_files)}):").classes("text-red font-bold")
+                                            ui.label(
+                                                f"❌ 遗漏文件 ({len(missing_files)}):"
+                                            ).classes("text-red font-bold")
                                             for file_path in missing_files:
-                                                ui.label(f"  • {file_path}").classes("text-sm text-red")
+                                                ui.label(f"  • {file_path}").classes(
+                                                    "text-sm text-red"
+                                                )
 
                                         if extra_files:
-                                            ui.label(f"⚠️ 多余文件 ({len(extra_files)}):").classes("text-orange font-bold")
+                                            ui.label(
+                                                f"⚠️ 多余文件 ({len(extra_files)}):"
+                                            ).classes("text-orange font-bold")
                                             for file_path in extra_files:
-                                                ui.label(f"  • {file_path}").classes("text-sm text-orange")
+                                                ui.label(f"  • {file_path}").classes(
+                                                    "text-sm text-orange"
+                                                )
 
             # 关闭按钮
             with ui.row().classes("w-full justify-end mt-4"):
                 RedButton("关闭", on_click=dialog.close)
 
         dialog.open()
-
-
 
 
 async def config_page() -> None:
