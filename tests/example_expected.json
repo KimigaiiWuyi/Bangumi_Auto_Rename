@@ -1,0 +1,64 @@
+{
+    "confidence": "High",
+    "reason": "本地文件结构清晰，Season 1 和 Season 2 分别对应 TMDB 的第一季和第二季，且集数匹配（各24集）。特典文件位于 Specials 目录，与 TMDB 第0季的 OVA 内容一致。文件命名规范，使用 S01E01 格式，与 TMDB 季集号完全对应。",
+    "season_mapping": [
+        {
+            "local_group_name": "Season 1",
+            "maps_to_tmdb_seasons": [1]
+        },
+        {
+            "local_group_name": "Season 2",
+            "maps_to_tmdb_seasons": [2]
+        },
+        {
+            "local_group_name": "Specials",
+            "maps_to_tmdb_seasons": [0]
+        }
+    ],
+    "file_mapping": [
+        {
+            "file_path": "Season 1/Jujutsu Kaisen S01E01.mkv",
+            "tmdb_season": 1,
+            "tmdb_episode": 1,
+            "episode_type": "regular",
+            "confidence": "High"
+        },
+        {
+            "file_path": "Season 1/Jujutsu Kaisen S01E02.mkv",
+            "tmdb_season": 1,
+            "tmdb_episode": 2,
+            "episode_type": "regular",
+            "confidence": "High"
+        },
+        {
+            "file_path": "Season 2/Jujutsu Kaisen S02E01.mkv",
+            "tmdb_season": 2,
+            "tmdb_episode": 1,
+            "episode_type": "regular",
+            "confidence": "High"
+        },
+        {
+            "file_path": "Season 2/Jujutsu Kaisen S02E02.mkv",
+            "tmdb_season": 2,
+            "tmdb_episode": 2,
+            "episode_type": "regular",
+            "confidence": "High"
+        },
+        {
+            "file_path": "Specials/Jujutsu Kaisen OVA01.mkv",
+            "tmdb_season": 0,
+            "tmdb_episode": 1,
+            "episode_type": "special",
+            "confidence": "High"
+        },
+        {
+            "file_path": "Specials/Jujutsu Kaisen OVA02.mkv",
+            "tmdb_season": 0,
+            "tmdb_episode": 2,
+            "episode_type": "special",
+            "confidence": "High"
+        }
+    ],
+    "extra_notes": "TMDB 第0季为特典（OVA），与本地 Specials 目录内容完全对应。本地未出现半集或总集编号情况，所有剧集均按标准季集划分，无异常命名。剧场版未包含在本数据中，不影响当前分析。"
+}
+
