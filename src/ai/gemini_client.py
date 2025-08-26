@@ -22,7 +22,8 @@ class GeminiClient(BaseAIClient):
             or "https://generativelanguage.googleapis.com"
         )
         self.model = cm.get_config("gemini_model") or "gemini-2.5-flash"
-
+        self.temperature = float(cm.get_config("gemini_temperature") or 0.5)
+ 
         if self.enabled and self.api_key:
             try:
                 # 构建http_options以支持自定义base_url
@@ -99,6 +100,7 @@ class GeminiClient(BaseAIClient):
                     system_instruction=system_prompt,
                     response_mime_type="application/json",
                     response_schema=schema,
+                    temperature=self.temperature,
                 )
                 request = {
                     'model': self.model,

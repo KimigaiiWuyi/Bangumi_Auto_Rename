@@ -16,9 +16,11 @@ CONFIG_DEFAULT = {
     "ai_api_key": "",
     "ai_base_url": "https://api.openai.com/v1",
     "ai_model": "gpt-4o-mini",
+    "ai_temperature": 0.1,  # OpenAI温度
     "gemini_api_key": "",
     "gemini_base_url": "https://generativelanguage.googleapis.com",
     "gemini_model": "gemini-2.5-flash",
+    "gemini_temperature": 0.5,  # Gemini温度
     "ai_enabled": False,
     "ai_confidence_threshold": "Medium",
     "openai_output_format": "function_calling",  # OpenAI输出格式选择
@@ -44,6 +46,8 @@ CN_MAP = {
     "ai_enabled": "🚀 启用AI识别",
     "ai_confidence_threshold": "📊 AI置信度阈值",
     "openai_output_format": "🎯 OpenAI输出格式",
+    "ai_temperature": "🔥 OpenAI温度",
+    "gemini_temperature": "🔥 Gemini温度",
     "ai_auto_save": "💾 自动保存AI分析",
     "log_level": "📝 日志等级",
 }

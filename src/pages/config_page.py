@@ -52,9 +52,11 @@ class ConfigPage(ui.dialog):
                 "ai_api_key",
                 "ai_base_url",
                 "ai_model",
+                "ai_temperature",
                 "gemini_api_key",
                 "gemini_base_url",
                 "gemini_model",
+                "gemini_temperature",
             ]
             for cn in ai_configs:
                 self._create_config_row(cn)
@@ -219,6 +221,8 @@ class ConfigPage(ui.dialog):
             "gemini_api_key",
             "gemini_base_url",
             "gemini_model",
+            "ai_temperature",
+            "gemini_temperature",
         ]
         for key in ai_config_keys:
             # 优先使用界面中的值，如果没有则使用配置文件中的值

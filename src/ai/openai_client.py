@@ -19,6 +19,7 @@ class OpenAIClient(BaseAIClient):
         self.api_key = cm.get_config("ai_api_key")
         self.base_url = cm.get_config("ai_base_url")
         self.model = cm.get_config("ai_model")
+        self.temperature = float(cm.get_config("ai_temperature") or 0.1)
 
         # 支持多种输出格式
         self.output_format = cm.get_config("openai_output_format") or "text"
@@ -60,15 +61,14 @@ class OpenAIClient(BaseAIClient):
             from .client import AIClient
 
             # 使用通用prompt构建基础内容
-            base_prompt = AIClient.build_common_prompt(anime_info, local_files)
-
-            # 添加OpenAI特定的JSON格式要求
-            prompt = self._add_openai_json_instructions(base_prompt)
+            prompt = AIClient.build_common_prompt(anime_info, local_files)
 
             # 使用通用系统提示词
             system_prompt = AIClient.get_system_prompt()
+
+            # 对于需要手动指定JSON格式的模式，将格式说明添加到system prompt
             if self.output_format not in ["function_calling", "structured_output"]:
-                system_prompt += " 请严格按照指定的JSON格式返回分析结果。"
+                system_prompt += self._get_json_instructions()
 
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -78,7 +78,7 @@ class OpenAIClient(BaseAIClient):
             request_params = {
                 "model": self.model,
                 "messages": messages,
-                "temperature": 0.1,
+                "temperature": self.temperature,
             }
 
             # 根据输出格式配置请求参数
@@ -240,57 +240,31 @@ class OpenAIClient(BaseAIClient):
             },
         }
 
-    def _add_openai_json_instructions(self, base_prompt: str) -> str:
+    def _get_json_instructions(self) -> str:
         """
-        为OpenAI添加JSON格式指令
-
-        Args:
-            base_prompt: 通用的基础提示词
+        获取在system prompt中使用的、详细的JSON格式指令 (使用JSON Schema)
 
         Returns:
-            添加了OpenAI特定JSON格式要求的完整提示词
+            包含JSON Schema和注意事项的说明字符串
         """
-        if self.output_format in ["function_calling", "structured_output"]:
-            # Tool-calling和structured output模式下不需要额外的JSON格式说明
-            return base_prompt
+        # 从Pydantic模型动态生成JSON Schema，确保与验证模型一致
+        schema = AIAnalysisResult.model_json_schema()
 
-        # JSON object和text模式下需要详细的JSON格式说明
-        json_instructions = """
-请严格按照以下JSON格式返回分析结果：
-{
-    "confidence": "High",
-    "reason": "分析理由说明",
-    "season_mapping": [
-        {
-            "local_group_name": "JUJUTSU_KAISEN_VOL1",
-            "maps_to_tmdb_seasons": [1]
-        },
-        {
-            "local_group_name": "JUJUTSU_KAISEN_VOL2",
-            "maps_to_tmdb_seasons": [2, 3]
-        }
-    ],
-    "file_mapping": [
-        {
-            "file_path": "相对路径/文件名.mkv",
-            "tmdb_season": 1,
-            "tmdb_episode": 1,
-            "episode_type": "regular",
-            "confidence": "High"
-        }
-    ],
-    "extra_notes": "额外的特殊情况说明"
-}
+        # 移除Pydantic生成的顶层描述，使Schema更简洁
+        schema.pop("title", None)
+        schema.pop("description", None)
 
-注意事项：
-- confidence只能是: "High", "Medium", "Low"
-- local_group_name应该是从文件扫描中获得的实际目录名或组名
-- maps_to_tmdb_seasons是整数数组，表示本地组对应的TMDB季度
-- episode_type只能是: "regular", "special", "movie"
-- 如果整个子路径中均无匹配命中项，则无需包含在season_mapping中
-- season_mapping的maps_to_tmdb_seasons中无需包含第零季
+        schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
+
+        json_instructions = f"""
+请严格按照以下JSON Schema格式返回分析结果。不要添加任何额外的解释或注释，只返回JSON对象。
+
+JSON Schema:
+```json
+{schema_str}
+```
 """
-        return base_prompt + json_instructions
+        return json_instructions
 
     def _configure_output_format(self, request_params: Dict) -> None:
         """
