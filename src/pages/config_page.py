@@ -32,6 +32,7 @@ class ConfigPage(ui.dialog):
                 "anime_movie_path",
                 "mode",
                 "docker_mnt",
+                "log_level",
             ]
             for cn in basic_configs:
                 self._create_config_row(cn)
@@ -44,6 +45,7 @@ class ConfigPage(ui.dialog):
             )
             ai_configs = [
                 "ai_enabled",
+                "ai_auto_save",
                 "ai_provider",
                 "ai_confidence_threshold",
                 "openai_output_format",  # OpenAI输出格式选择
@@ -104,6 +106,24 @@ class ConfigPage(ui.dialog):
                             ["High", "Medium", "Low"],
                             value=cm.get_config(cn),
                             on_change=lambda e, c=cn: self._change(c, e.value),
+                        )
+                        tg.style("font-size: 10px")
+                        tg.classes("flex no-wrap w-full")
+                    elif cn == "log_level":
+                        tg = RedToogle(
+                            ["DEBUG", "INFO", "WARNING", "ERROR"],
+                            value=cm.get_config(cn),
+                            on_change=lambda e, c=cn: self._change(c, e.value),
+                        )
+                        tg.style("font-size: 10px")
+                        tg.classes("flex no-wrap w-full")
+                    elif cn == "ai_auto_save":
+                        tg = RedToogle(
+                            ["启用", "禁用"],
+                            value="启用" if cm.get_config(cn) else "禁用",
+                            on_change=lambda e, c=cn: self._change(
+                                c, e.value == "启用"
+                            ),
                         )
                         tg.style("font-size: 10px")
                         tg.classes("flex no-wrap w-full")
@@ -189,6 +209,7 @@ class ConfigPage(ui.dialog):
         current_config = {}
         ai_config_keys = [
             "ai_enabled",
+            "ai_auto_save",
             "ai_provider",
             "ai_confidence_threshold",
             "openai_output_format",

@@ -41,8 +41,18 @@ console_formatter = structlog.stdlib.ProcessorFormatter(
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(console_formatter)
 
+from .config.config_manager import cm
+
+# 获取日志级别配置
+log_level_str = cm.get_config("log_level") or "INFO"
+log_level = getattr(logging, log_level_str.upper(), logging.INFO)
+
+# 设置控制台和文件处理器的日志级别
+console_handler.setLevel(log_level)
+file_handler.setLevel(log_level)
+
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=log_level,
     # format="%(message)s",
     handlers=[file_handler, console_handler],
 )

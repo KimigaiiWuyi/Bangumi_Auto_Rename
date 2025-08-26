@@ -6,6 +6,7 @@ from .models import AIAnalysisResult
 from ..config.config_manager import cm
 from .gemini_client import GeminiClient
 from .openai_client import OpenAIClient
+from .base_client import BaseAIClient
 
 
 class AIClient:
@@ -18,9 +19,9 @@ class AIClient:
 
         # 根据提供商创建相应的客户端
         if self.provider.lower() == "gemini":
-            self._client = GeminiClient()
+            self._client: BaseAIClient = GeminiClient()
         else:  # 默认使用OpenAI
-            self._client = OpenAIClient()
+            self._client: BaseAIClient = OpenAIClient()
 
     def is_available(self) -> bool:
         """检查AI客户端是否可用"""
@@ -46,7 +47,12 @@ class AIClient:
             return None
 
         logger.info(f"[AI识别] 使用 {self.provider.upper()} 进行分析")
-        return self._client.analyze_episode_mapping(anime_info, local_files)
+        result = self._client.analyze_episode_mapping(anime_info, local_files)
+
+        # 统一在此处保存分析数据
+        self._client._save_analysis_data(anime_info, local_files, result)
+
+        return result
 
     @staticmethod
     def build_common_prompt(anime_info: Dict, local_files: List[Dict]) -> str:

@@ -6,19 +6,19 @@ from openai import OpenAI
 from pydantic import ValidationError
 
 from ..logger import logger
+from .base_client import BaseAIClient
 from .models import AIAnalysisResult
 from ..config.config_manager import cm
 
 
-class OpenAIClient:
+class OpenAIClient(BaseAIClient):
     """OpenAI API客户端，支持多种格式化输出方式"""
 
     def __init__(self):
+        super().__init__("openai")
         self.api_key = cm.get_config("ai_api_key")
         self.base_url = cm.get_config("ai_base_url")
         self.model = cm.get_config("ai_model")
-        self.enabled = bool(cm.get_config("ai_enabled"))
-        self.confidence_threshold = cm.get_config("ai_confidence_threshold")
 
         # 支持多种输出格式
         self.output_format = cm.get_config("openai_output_format") or "text"
@@ -84,9 +84,13 @@ class OpenAIClient:
             # 根据输出格式配置请求参数
             self._configure_output_format(request_params)
 
+            logger.debug(
+                f"[OpenAI识别] Request: {json.dumps(request_params, indent=2, ensure_ascii=False)}"
+            )
             response = self.client.chat.completions.create(**request_params)
 
             response_message = response.choices[0].message
+            logger.debug(f"[OpenAI识别] Response content: {response_message.content}")
             if not response_message:
                 logger.error("[OpenAI识别] OpenAI 响应内容为空")
                 return None
@@ -127,6 +131,7 @@ class OpenAIClient:
         if response_message.tool_calls:
             tool_call = response_message.tool_calls[0]
             if tool_call.function.name == "analyze_file_structure":
+                logger.debug(f"[OpenAI识别] 识别到Tool-calling: {tool_call.function.name}")
                 try:
                     json_data = json.loads(tool_call.function.arguments)
                 except json.JSONDecodeError as e:
@@ -138,6 +143,7 @@ class OpenAIClient:
         else:
             # 否则，从内容中提取
             content = response_message.content
+            logger.debug(f"[OpenAI识别] 普通内容响应: {content}")
             if content:
                 json_data = self._extract_json_from_response(content)
 
@@ -295,11 +301,11 @@ class OpenAIClient:
         """
         if self.output_format == "function_calling":
             request_params["tools"] = [self._get_json_schema()]
-            # request_params["tool_choice"] = {
-            #     "type": "function",
-            #     "function": {"name": "analyze_file_structure"},
-            # }
-            request_params["tool_choice"] = "auto"
+            request_params["tool_choice"] = {
+                "type": "function",
+                "function": {"name": "analyze_file_structure"},
+            }
+            # request_params["tool_choice"] = "auto"
         elif self.output_format == "json_object":
             request_params["response_format"] = {"type": "json_object"}
         elif self.output_format == "structured_output":

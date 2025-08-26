@@ -3,25 +3,25 @@ from typing import Dict, List, Optional
 
 from google import genai
 from pydantic import ValidationError
-from google.genai.types import HttpOptions
+from google.genai.types import HttpOptions, GenerateContentConfig
 
 from ..logger import logger
+from .base_client import BaseAIClient
 from .models import AIAnalysisResult
 from ..config.config_manager import cm
 
 
-class GeminiClient:
+class GeminiClient(BaseAIClient):
     """Google Gemini API客户端，支持结构化输出"""
 
     def __init__(self):
+        super().__init__("gemini")
         self.api_key = cm.get_config("gemini_api_key")
         self.base_url = (
             cm.get_config("gemini_base_url")
             or "https://generativelanguage.googleapis.com"
         )
         self.model = cm.get_config("gemini_model") or "gemini-2.5-flash"
-        self.enabled = bool(cm.get_config("ai_enabled"))
-        self.confidence_threshold = cm.get_config("ai_confidence_threshold")
 
         if self.enabled and self.api_key:
             try:
@@ -94,18 +94,28 @@ class GeminiClient:
             logger.debug(f"[Gemini识别] 使用Schema: {schema}")
 
             try:
+                request_contents = f"{prompt}"
+                request_config = GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    response_mime_type="application/json",
+                    response_schema=schema,
+                )
+                request = {
+                    'model': self.model,
+                    'config': request_config,
+                    'contents': request_contents
+                }
+                logger.debug(f"[Gemini识别] Request: {request}")
                 response = self.client.models.generate_content(
                     model=self.model,
-                    contents=f"{system_prompt}\n\n{prompt}",
-                    config={
-                        "response_mime_type": "application/json",
-                        "response_schema": schema,
-                    },
+                    contents=request_contents,
+                    config=request_config,
                 )
             except Exception as e:
                 logger.error(f"[Gemini识别] Gemini API调用失败: {e}")
                 return None
 
+            logger.debug(f"[Gemini识别] Raw response text: {response.text}")
             if not response or not response.text:
                 logger.error("[Gemini识别] Gemini 响应内容为空")
                 return None

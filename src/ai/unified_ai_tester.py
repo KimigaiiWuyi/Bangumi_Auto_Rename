@@ -213,11 +213,6 @@ class UnifiedAITester:
                 test_case["anime_info"], test_case["local_files"]
             )
 
-            # TODO
-            if ai_result is None:
-                result["error"] = "AI分析失败，返回None"
-                return result
-
             # 加载期望结果并验证
             expected = self._load_expected_result()
             validation = self._validate_ai_result(ai_result, expected)
@@ -257,6 +252,7 @@ class UnifiedAITester:
         except Exception as e:
             logger.error(f"[AI识别测试] AI测试异常: {str(e)}")
             result["error"] = str(e)
+            result["result_status"] = "ai_failed"
         finally:
             # 恢复原始配置
             self._restore_config()

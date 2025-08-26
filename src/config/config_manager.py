@@ -22,6 +22,8 @@ CONFIG_DEFAULT = {
     "ai_enabled": False,
     "ai_confidence_threshold": "Medium",
     "openai_output_format": "function_calling",  # OpenAI输出格式选择
+    "ai_auto_save": False,  # 是否自动保存AI分析结果
+    "log_level": "INFO",  # 日志等级
 }
 
 CN_MAP = {
@@ -42,6 +44,8 @@ CN_MAP = {
     "ai_enabled": "🚀 启用AI识别",
     "ai_confidence_threshold": "📊 AI置信度阈值",
     "openai_output_format": "🎯 OpenAI输出格式",
+    "ai_auto_save": "💾 自动保存AI分析",
+    "log_level": "📝 日志等级",
 }
 
 

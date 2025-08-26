@@ -177,6 +177,12 @@ class DataProcessor:
         # 临时修改配置
         self.original_provider = None
         self.original_output_format = None
+        self.original_auto_save = None
+
+        # 在测试期间禁用自动保存
+        self.original_auto_save = cm.get_config("ai_auto_save")
+        cm.set_config("ai_auto_save", False)
+        logger.info("[测试] 临时禁用AI分析结果自动保存")
 
         if provider:
             self.original_provider = cm.get_config("ai_provider")
@@ -196,6 +202,9 @@ class DataProcessor:
             cm.set_config("ai_provider", self.original_provider)
         if self.original_output_format is not None:
             cm.set_config("openai_output_format", self.original_output_format)
+        if self.original_auto_save is not None:
+            cm.set_config("ai_auto_save", self.original_auto_save)
+            logger.info("[测试] 恢复AI分析结果自动保存设置")
 
     def auto_process(
         self, anime_info: dict, local_files: list
