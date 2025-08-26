@@ -270,7 +270,7 @@ class UnifiedAITester:
         logger.info("[AI识别测试] 开始OpenAI API多格式测试")
 
         # 要测试的输出格式
-        formats_to_test = ["function_calling", "structured_output", "json_object"]
+        formats_to_test = ["structured_output", "json_object", "function_calling"]
         format_results = []
         successful_formats = []
 
@@ -305,7 +305,7 @@ class UnifiedAITester:
 
     def _get_recommended_format(self, format_results: List[Dict[str, Any]]) -> str:
         """根据测试结果推荐最佳格式"""
-        priority_order = ["function_calling", "structured_output", "json_object"]
+        priority_order = ["structured_output", "json_object", "function_calling"]
 
         # 当前使用简单测试用例，不允许出错，只要有错误就标记为失败
         perfect_formats = []  # 完全正确的格式
