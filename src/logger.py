@@ -83,3 +83,16 @@ logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
 # 抑制 gRPC 和 Google C++ 底层库的日志
 os.environ['GRPC_VERBOSITY'] = 'ERROR'
 os.environ['GLOG_minloglevel'] = '2'
+
+def update_log_level_from_config() -> None:
+    """
+    Update log levels of console and file handlers based on the current configuration.
+    """
+    # Retrieve desired log level from configuration
+    log_level_str = cm.get_config("log_level") or "INFO"
+    level = getattr(logging, log_level_str.upper(), logging.INFO)
+    # Update handler levels
+    console_handler.setLevel(level)
+    file_handler.setLevel(level)
+    # Update root logger level
+    logging.getLogger().setLevel(level)
