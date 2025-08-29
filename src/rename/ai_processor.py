@@ -2,10 +2,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from ..logger import logger
-from .utils import VIDEO_SUFFIX
+from .utils import VIDEO_SUFFIX, IGNORE_DIR
 from ..ai.client import AIClient
-from ..ai.models import AIAnalysisResult
+from ..ai.models import AIAnalysisResult, MediaSelectionResult
 from ..ai.video_analyzer import VideoAnalyzer
+from .get_info import extract_tv_info, extract_movie_info
 
 
 class AIProcessor:
@@ -175,6 +176,88 @@ class AIProcessor:
                     video_files.append(item)
 
         return sorted(video_files)
+
+    def identify_and_select_media(
+        self,
+        tv_candidates: List[tuple],  # [(name, info), ...]
+        movie_candidates: List[tuple],  # [(name, info), ...]
+        path: Path,
+        is_anime: Optional[bool] = None,
+    ) -> Optional[MediaSelectionResult]:
+        """
+        使用AI识别媒体类型并选择最佳TMDB候选项
+        
+        Args:
+            tv_candidates: 电视剧候选项列表 [(name, info), ...]
+            movie_candidates: 电影候选项列表 [(name, info), ...]
+            path: 本地文件路径
+            is_anime: 用户指定的是否为动漫
+            
+        Returns:
+            AI识别和选择结果
+        """
+        if not self.ai_client.is_available():
+            logger.info("[AI处理] AI功能未启用，跳过AI选择")
+            return None
+
+        # 收集视频文件
+        video_files = self._collect_video_files_for_selection(path)
+        if not video_files:
+            logger.warning("[AI处理] 未找到视频文件")
+            return None
+
+        # 提取并过滤TMDB信息
+        filtered_tv_candidates = []
+        for name, info in tv_candidates:
+            filtered_tv_candidates.append(extract_tv_info(info))
+        
+        filtered_movie_candidates = []
+        for name, info in movie_candidates:
+            filtered_movie_candidates.append(extract_movie_info(info))
+
+        # 使用AI进行媒体选择
+        ai_result = self.ai_client.identify_and_select_media(
+            tv_candidates=filtered_tv_candidates,
+            movie_candidates=filtered_movie_candidates,
+            video_files=video_files,
+            directory_name=path.name,
+            is_anime=is_anime,
+        )
+
+        if ai_result:
+            logger.info(f"[AI处理] AI媒体选择完成，类型: {ai_result.media_type}, 置信度: {ai_result.confidence}")
+
+        return ai_result
+
+    def _collect_video_files_for_selection(self, path: Path) -> List[str]:
+        """为媒体选择收集视频文件列表（过滤部分目录）"""
+        video_files = []
+
+        if path.is_file():
+            if path.suffix.lower() in VIDEO_SUFFIX:
+                # 返回相对路径
+                return [path.name]
+        else:
+            for item in path.rglob("*"):
+                if item.is_file() and item.suffix.lower() in VIDEO_SUFFIX:
+                    # 检查是否在忽略目录中
+                    if self._should_ignore_path(item):
+                        continue
+                    
+                    # 计算相对于基础路径的相对路径
+                    relative_path = item.relative_to(path)
+                    video_files.append(str(relative_path))
+
+        return sorted(video_files)
+    
+    def _should_ignore_path(self, file_path: Path) -> bool:
+        """检查文件路径是否应该被忽略"""
+        # 检查路径中的任何部分是否包含忽略目录
+        for part in file_path.parts:
+            for ignore_pattern in IGNORE_DIR:
+                if ignore_pattern.lower() in part.lower():
+                    return True
+        return False
 
     def _log_low_confidence_result(self, path: Path, ai_result: AIAnalysisResult):
         """记录低置信度结果到单独日志"""

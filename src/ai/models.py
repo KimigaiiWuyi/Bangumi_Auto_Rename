@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, ClassVar
 
 from pydantic import Field, BaseModel, field_validator
 
@@ -53,6 +53,10 @@ class EpisodeMapping(BaseModel):
 
 class AIAnalysisResult(BaseModel):
     """AI分析结果"""
+    
+    # OpenAI Function Calling 使用的函数名（类变量）
+    FUNCTION_NAME: ClassVar[str] = "analyze_episode_mapping"
+    FUNCTION_DESCRIPTION: ClassVar[str] = "分析本地文件结构并返回与TMDB的映射关系"
 
     confidence: Literal["High", "Medium", "Low"] = Field(
         ..., description="总体置信度等级"
@@ -113,3 +117,53 @@ class AIAnalysisResult(BaseModel):
     def schema(cls, by_alias: bool = True, ref_template: str = '#/definitions/{model}'):
         """向后兼容的schema方法"""
         return cls.model_json_schema(by_alias=by_alias, ref_template=ref_template)
+
+
+class MediaSelectionResult(BaseModel):
+    """AI媒体识别和选择结果"""
+    
+    # OpenAI Function Calling 使用的函数名（类变量）
+    FUNCTION_NAME: ClassVar[str] = "identify_and_select_media"
+    FUNCTION_DESCRIPTION: ClassVar[str] = "识别媒体类型并选择最匹配的TMDB条目"
+    
+    reasoning: str = Field(
+        ..., description="识别媒体类型和选择候选项的详细推理过程（放在最前面促进AI思考）"
+    )
+    
+    media_type: Literal["tv", "movie"] = Field(
+        ..., description="媒体类型：tv（电视剧）或movie（电影）"
+    )
+    
+    selected_tmdb_id: int = Field(
+        ..., description="选中的TMDB条目ID"
+    )
+    
+    selected_name: str = Field(
+        ..., description="选中的媒体名称"
+    )
+    
+    confidence: Literal["High", "Medium", "Low"] = Field(
+        ..., description="识别和选择的整体置信度"
+    )
+    
+    class Config:
+        populate_by_name = True
+        
+    @classmethod
+    def model_json_schema(
+        cls, by_alias: bool = True, ref_template: str = '#/$defs/{model}'
+    ):
+        """生成兼容的JSON Schema"""
+        schema = super().model_json_schema(by_alias=by_alias, ref_template=ref_template)
+        
+        def remove_additional_properties(obj):
+            if isinstance(obj, dict):
+                obj.pop('additionalProperties', None)
+                for key, value in obj.items():
+                    remove_additional_properties(value)
+            elif isinstance(obj, list):
+                for item in obj:
+                    remove_additional_properties(item)
+        
+        remove_additional_properties(schema)
+        return schema

@@ -1,6 +1,6 @@
 import re
 from time import sleep
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import tmdbsimple as tmdb
 
@@ -154,6 +154,31 @@ class Search:
         query: str,
         year: int,
     ):
+        """获取单个电影信息（向后兼容）"""
+        candidates = self.get_movie_info_candidates(query, year, max_candidates=1)
+        if candidates:
+            return candidates[0]
+        return '', None
+    
+    def get_movie_info_candidates(
+        self,
+        query: str,
+        year: int,
+        max_candidates: int = 5
+    ) -> List[Tuple[str, Dict]]:
+        """
+        获取电影信息，返回多个候选项的name+info数组
+        
+        Args:
+            query: 搜索关键词
+            year: 年份
+            max_candidates: 最大候选项数量
+            
+        Returns:
+            [(name, info), ...] 候选项列表，按TMDB相关性排序
+        """
+        candidates = []
+        
         for i in range(3):
             try:
                 search = tmdb.Search()
@@ -162,25 +187,52 @@ class Search:
                     language='zh-CN',
                     year=year if year != 0 else None,
                 )
-                target_list = search.__dict__['results']
-                if target_list:
-                    target = target_list[0]
+                target_list = search.__dict__['results'][:max_candidates]
+                
+                for target in target_list:
                     name = target['title']
                     movie = tmdb.Movies(target['id'])
                     movie.info()
-                    logger.debug(str(movie.__dict__))
-                    return name, movie.__dict__
-                return '', None
-            except:  # noqa:E722, B001
+                    candidates.append((name, movie.__dict__))
+                    
+                return candidates
+                
+            except Exception as e:
                 sleep(5)
-                logger.warning(f'[电影搜索] 网络错误, 重试第{i + 1}次中...')
-        return '', None
+                logger.warning(f'[电影搜索] 网络错误, 重试第{i + 1}次中...: {e}')
+        
+        return []
 
     def get_tv_info(
         self,
         query: str,
         year: int,
     ):
+        """获取单个电视剧信息（向后兼容）"""
+        candidates = self.get_tv_info_candidates(query, year, max_candidates=1)
+        if candidates:
+            return candidates[0]
+        return '', None
+    
+    def get_tv_info_candidates(
+        self,
+        query: str,
+        year: int,
+        max_candidates: int = 5
+    ) -> List[Tuple[str, Dict]]:
+        """
+        获取电视剧信息，返回多个候选项的name+info数组
+        
+        Args:
+            query: 搜索关键词
+            year: 年份
+            max_candidates: 最大候选项数量
+            
+        Returns:
+            [(name, info), ...] 候选项列表，按TMDB相关性排序
+        """
+        candidates = []
+        
         for i in range(3):
             try:
                 for _ in range(3):
@@ -190,19 +242,74 @@ class Search:
                         language='zh-CN',
                         first_air_date_year=year if year != 0 else None,
                     )
-                    target_list = search.__dict__['results']
+                    target_list = search.__dict__['results'][:max_candidates]
+                    
                     if target_list:
-                        target = target_list[0]
-                        name = target['name']
-                        tv = tmdb.TV(target['id'])
-                        tv.info()
-                        logger.debug(str(tv.__dict__))
-                        return name, tv.__dict__
+                        for target in target_list:
+                            name = target['name']
+                            tv = tmdb.TV(target['id'])
+                            tv.info()
+                            candidates.append((name, tv.__dict__))
+                        return candidates
                     else:
                         if is_chinese_percentage_sufficient(query):
                             query = re.sub(r'[a-zA-Z]', '', query)
-                return '', None
-            except:  # noqa:E722, B001
+                            
+                return candidates
+                
+            except Exception as e:
                 sleep(5)
-                logger.warning(f'[电视剧搜索] 网络错误, 重试第{i + 1}次中...')
-        return '', None
+                logger.warning(f'[电视剧搜索] 网络错误, 重试第{i + 1}次中...: {e}')
+        
+        return []
+
+
+def extract_tv_info(tv_info: Dict) -> Dict:
+    """
+    从 TMDB 电视剧信息中提取 AI 需要的关键字段
+    """
+    # 提取季度信息，过滤掉第0季（特别篇）
+    seasons = []
+    for season in tv_info.get("seasons", []):
+        # 跳过第0季（特别篇/OVA等）
+        if season.get("season_number", 0) == 0:
+            continue
+            
+        seasons.append({
+            "air_date": season.get("air_date", ""),
+            "episode_count": season.get("episode_count", 0),
+            "name": season.get("name", ""),
+            "overview": season.get("overview", ""),
+            "season_number": season.get("season_number", 0)
+        })
+    
+    return {
+        "id": tv_info.get("id"),
+        "first_air_date": tv_info.get("first_air_date", ""),
+        "name": tv_info.get("name", ""),  # 电视剧使用name字段
+        "genres": [g.get("name", "") for g in tv_info.get("genres", [])],
+        "number_of_episodes": tv_info.get("number_of_episodes", 0),
+        "number_of_seasons": tv_info.get("number_of_seasons", 0),
+        "origin_country": tv_info.get("origin_country", []),
+        "original_language": tv_info.get("original_language", ""),
+        "original_name": tv_info.get("original_name", ""),
+        "overview": tv_info.get("overview", ""),
+        "seasons": seasons  # 已过滤第0季
+    }
+
+
+def extract_movie_info(movie_info: Dict) -> Dict:
+    """
+    从 TMDB 电影信息中提取 AI 需要的关键字段
+    """
+    return {
+        "id": movie_info.get("id"),
+        "name": movie_info.get("title", ""),  # 电影使用title字段
+        "genres": [g.get("name", "") for g in movie_info.get("genres", [])],
+        "origin_country": movie_info.get("origin_country", []),
+        "original_language": movie_info.get("original_language", ""),
+        "original_title": movie_info.get("original_title", ""),
+        "overview": movie_info.get("overview", ""),
+        "release_date": movie_info.get("release_date", ""),
+        "title": movie_info.get("title", "")
+    }

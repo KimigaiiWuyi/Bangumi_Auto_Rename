@@ -264,24 +264,142 @@ class Rename:
         pos = 0
         logger.info('[处理任务] 未传入任务类型，开始判断该文件是否为电影！')
 
-        s1_name, s1_info = self.search.get_tv_info(rtpath_name, year)
-        logger.info(f'[处理任务] 搜索到的电视剧名称: {s1_name}')
-        if not s1_name and year != 0:
-            s1_name, s1_info = self.search.get_tv_info(rtpath_name, 0)
-            logger.info(f'[处理任务] 未搜索到结果, 删除year后重试: {s1_name}')
+        # 获取TMDB候选项（多个）
+        tv_candidates = self.search.get_tv_info_candidates(rtpath_name, year)
+        logger.info(f'[处理任务] 搜索到{len(tv_candidates)}个电视剧候选项')
+        if not tv_candidates and year != 0:
+            tv_candidates = self.search.get_tv_info_candidates(rtpath_name, 0)
+            logger.info(f'[处理任务] 删除year后重试，搜索到{len(tv_candidates)}个电视剧候选项')
 
-        s2_name, s2_info = self.search.get_movie_info(rtpath_name, year)
-        logger.info(f'[处理任务] 搜索到的电影名称: {s2_name}')
+        movie_candidates = self.search.get_movie_info_candidates(rtpath_name, year)
+        logger.info(f'[处理任务] 搜索到{len(movie_candidates)}个电影候选项')
+        if not movie_candidates and year != 0:
+            movie_candidates = self.search.get_movie_info_candidates(rtpath_name, 0)
+            logger.info(f'[处理任务] 删除year后重试，搜索到{len(movie_candidates)}个电影候选项')
 
-        if not s2_name and year != 0:
-            s2_name, s2_info = self.search.get_movie_info(
-                rtpath_name,
-                year,
+        # 检查是否需要使用AI进行候选项选择
+        total_candidates = len(tv_candidates) + len(movie_candidates)
+        should_use_ai = (
+            total_candidates > 1 and 
+            self.ai_processor.ai_client.is_available() and
+            cm.get_config("ai_enabled")
+        )
+        
+        if should_use_ai:
+            logger.info('[处理任务] 检测到多个候选项，启用AI进行智能选择')
+            ai_result = self.ai_processor.identify_and_select_media(
+                tv_candidates=tv_candidates,
+                movie_candidates=movie_candidates,
+                path=path,
+                is_anime=is_anime,
             )
-            logger.info(f'[处理任务] 未搜索到结果, 删除year后重试: {s2_name}')
+            
+            # 检查AI置信度阈值
+            confidence_threshold = cm.get_config("ai_confidence_threshold")
+            should_use_ai_result = False
+            
+            if ai_result:
+                if (
+                    confidence_threshold == "High"
+                    and ai_result.confidence == "High"
+                ):
+                    should_use_ai_result = True
+                elif confidence_threshold == "Medium" and ai_result.confidence in [
+                    "High",
+                    "Medium",
+                ]:
+                    should_use_ai_result = True
+                elif confidence_threshold == "Low":
+                    should_use_ai_result = True
+            
+            if should_use_ai_result and ai_result:
+                logger.info(f'[处理任务] 使用AI选择结果：{ai_result.media_type} - {ai_result.selected_name}')
+                
+                # 根据AI结果找到对应的候选项
+                if ai_result.media_type == "tv":
+                    for name, info in tv_candidates:
+                        if info.get("id") == ai_result.selected_tmdb_id:
+                            s1_name, s1_info = name, info
+                            s2_name, s2_info = '', None
+                            break
+                    else:
+                        logger.warning('[处理任务] AI选择的电视剧ID未在候选项中找到，回退到传统逻辑')
+                        return self._fallback_to_traditional_logic(
+                            tv_candidates, movie_candidates, rtpath_name, path, _uuid, is_anime
+                        )
+                else:  # movie
+                    for name, info in movie_candidates:
+                        if info.get("id") == ai_result.selected_tmdb_id:
+                            s1_name, s1_info = '', None
+                            s2_name, s2_info = name, info
+                            break
+                    else:
+                        logger.warning('[处理任务] AI选择的电影ID未在候选项中找到，回退到传统逻辑')
+                        return self._fallback_to_traditional_logic(
+                            tv_candidates, movie_candidates, rtpath_name, path, _uuid, is_anime
+                        )
+                
+                # 强制使用AI的判断结果
+                if ai_result.media_type == "tv":
+                    is_movie = False
+                    info = s1_info
+                    name = s1_name
+                else:
+                    is_movie = True
+                    info = s2_info
+                    name = s2_name
+            else:
+                logger.info('[处理任务] AI置信度不足或AI结果无效，使用传统方法处理')
+                return self._fallback_to_traditional_logic(
+                    tv_candidates, movie_candidates, rtpath_name, path, _uuid, is_anime
+                )
+        else:
+            # 使用传统逻辑（选择第一个候选项）
+            return self._fallback_to_traditional_logic(
+                tv_candidates, movie_candidates, rtpath_name, path, _uuid, is_anime
+            )
 
+        # 处理动漫标识
+        if not info:
+            if is_movie:
+                logger.warning(f'[处理任务] 未搜索到电影信息, 跳过{rtpath_name}')
+                return f'[TMDB] 未搜索到电影信息, 跳过{rtpath_name}'
+            else:
+                logger.warning(f'[处理任务] 未搜索到电视剧信息, 跳过{rtpath_name}')
+                return f'[TMDB] 未搜索到电视剧信息, 跳过{rtpath_name}'
+
+        if is_anime is None:
+            for g in info['genres']:
+                if g['name'].lower() == 'animation' or g['name'].lower() == 'anime':
+                    is_anime = True
+                    break
+            else:
+                is_anime = False
+                
+        return name, info, is_anime, is_movie
+    
+    def _fallback_to_traditional_logic(
+        self,
+        tv_candidates: List[tuple],
+        movie_candidates: List[tuple],
+        rtpath_name: str,
+        path: Path,
+        _uuid: str,
+        is_anime: Optional[bool] = None,
+    ) -> Union[Tuple[str, Dict, bool, bool], str]:
+        """回退到传统的打分逻辑"""
+        logger.info('[处理任务] 使用传统打分逻辑进行媒体类型判断')
+        
+        # 获取第一个候选项（保持原有逻辑）
+        s1_name, s1_info = tv_candidates[0] if tv_candidates else ('', None)
+        s2_name, s2_info = movie_candidates[0] if movie_candidates else ('', None)
+        
+        logger.debug(f'[处理任务] 传统逻辑选择的电视剧名称: {s1_name}')
+        logger.debug(f'[处理任务] 传统逻辑选择的电影名称: {s2_name}')
+        
         season_id = extract_season(rtpath_name)
-
+        pos = 0
+        
         if s1_name:
             pos += 1
         elif s2_name:
@@ -303,8 +421,8 @@ class Rename:
             else:
                 pos -= 0.4
 
-        if pos > 0 or (is_movie is not None and not is_movie):
-            logger.info('[处理任务] 该文件可能为电视剧！')
+        if pos > 0:
+            logger.info('[处理任务] 传统逻辑判断: 该文件可能为电视剧！')
             is_movie = False
             info = s1_info
             name = s1_name
@@ -321,19 +439,14 @@ class Rename:
                 else:
                     is_anime = False
         else:
-            logger.info('[处理任务] 该文件可能为电影！')
+            logger.info('[处理任务] 传统逻辑判断: 该文件可能为电影！')
             is_movie = True
             info = s2_info
             name = s2_name
 
             if not info:
                 logger.warning(f'[处理任务] 未搜索到电影信息, 跳过{rtpath_name}')
-                return self.error_reply(
-                    _uuid,
-                    f'[TMDB] 未搜索到电影信息, 跳过{rtpath_name}',
-                    path,
-                    is_anime,
-                )
+                return f'[TMDB] 未搜索到电影信息, 跳过{rtpath_name}'
 
             if is_anime is None:
                 for g in info['genres']:
@@ -342,6 +455,7 @@ class Rename:
                         break
                 else:
                     is_anime = False
+        
         return name, info, is_anime, is_movie
 
     def _process(

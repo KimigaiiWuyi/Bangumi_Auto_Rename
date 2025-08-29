@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from ..logger import logger
 from .base_client import BaseAIClient
-from .models import AIAnalysisResult
+from .models import AIAnalysisResult, MediaSelectionResult
 from ..config.config_manager import cm
 
 
@@ -33,42 +33,24 @@ class OpenAIClient(BaseAIClient):
         """检查OpenAI客户端是否可用"""
         return bool(self.enabled and self.client and self.api_key)
 
-    def analyze_episode_mapping(
+    def _structured_output_with_validation(
         self,
-        anime_info: Dict,
-        local_files: List[Dict],
-    ) -> Optional[AIAnalysisResult]:
+        prompt: str,
+        system_prompt: str,
+        response_model,
+        **kwargs
+    ):
         """
-        使用OpenAI API分析本地文件与TMDB剧集的映射关系
-
-        Args:
-            anime_info: TMDB动漫信息
-            local_files: 本地文件信息列表，包含文件名、路径、时长等
-
-        Returns:
-            验证后的AIAnalysisResult对象
+        OpenAI的通用结构化输出+验证方法
         """
-        if not self.is_available():
-            logger.warning("[OpenAI识别] OpenAI功能未启用或配置不完整")
-            return None
-
-        if not self.client:
-            logger.error("[OpenAI识别] OpenAI 客户端未初始化")
+        if not self.is_available() or not self.client:
+            logger.error("[OpenAI识别] 客户端不可用")
             return None
 
         try:
-            # 导入AIClient以使用通用prompt方法
-            from .client import AIClient
-
-            # 使用通用prompt构建基础内容
-            prompt = AIClient.build_common_prompt(anime_info, local_files)
-
-            # 使用通用系统提示词
-            system_prompt = AIClient.get_system_prompt()
-
             # 对于需要手动指定JSON格式的模式，将格式说明添加到system prompt
             if self.output_format not in ["function_calling", "structured_output"]:
-                system_prompt += self._get_json_instructions()
+                system_prompt += self._get_json_instructions_for_model(response_model)
 
             messages = [
                 {"role": "system", "content": system_prompt},
@@ -82,7 +64,7 @@ class OpenAIClient(BaseAIClient):
             }
 
             # 根据输出格式配置请求参数
-            self._configure_output_format(request_params)
+            self._configure_output_format_for_model(request_params, response_model)
 
             logger.debug(
                 f"[OpenAI识别] Request: {json.dumps(request_params, indent=2, ensure_ascii=False)}"
@@ -91,59 +73,105 @@ class OpenAIClient(BaseAIClient):
 
             response_message = response.choices[0].message
             logger.debug(f"[OpenAI识别] Response content: {response_message.content}")
+            
             if not response_message:
-                logger.error("[OpenAI识别] OpenAI 响应内容为空")
+                logger.error("[OpenAI识别] 响应内容为空")
                 return None
 
             # 提取并验证JSON内容
-            result = self._extract_and_validate_json(response_message)
+            return self._extract_and_validate_json_for_model(response_message, response_model)
 
-            if not result:
-                logger.error("[OpenAI识别] 无法解析或验证OpenAI响应")
-                return None
+        except Exception as e:
+            logger.error(f"[OpenAI识别] 结构化输出失败: {str(e)}")
+            return None
 
-            # 记录低置信度结果
-            if result.confidence == "Low":
-                logger.warning(f"[OpenAI识别] 低置信度结果: {result.reason}")
+    def analyze_episode_mapping(
+        self,
+        anime_info: Dict,
+        local_files: List[Dict],
+    ) -> Optional[AIAnalysisResult]:
+        """
+        使用OpenAI API分析本地文件与TMDB剧集的映射关系
+        """
+        try:
+            # 导入AIClient以使用通用prompt方法
+            from .client import AIClient
 
-            logger.info(f"[OpenAI识别] 分析完成，置信度: {result.confidence}")
-            return result
+            # 构建提示词
+            prompt = AIClient.build_common_prompt(anime_info, local_files)
+            system_prompt = AIClient.get_system_prompt()
+
+            # 使用通用的结构化输出方法
+            return self._structured_output_with_validation(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                response_model=AIAnalysisResult
+            )
 
         except Exception as e:
             logger.error(f"[OpenAI识别] 分析失败: {str(e)}")
             return None
 
-    def _extract_and_validate_json(
-        self, response_message
-    ) -> Optional[AIAnalysisResult]:
+    def identify_and_select_media(
+        self,
+        tv_candidates: List[Dict],
+        movie_candidates: List[Dict],
+        video_files: List[str],
+        directory_name: str,
+        is_anime: Optional[bool] = None,
+    ) -> Optional[MediaSelectionResult]:
         """
-        从OpenAI响应中提取JSON内容并使用Pydantic验证
-        兼容常规内容响应和Tool-calling响应
+        使用OpenAI API识别媒体类型并选择最佳候选项
+        """
+        try:
+            # 从 client.py 导入 AIClient 以使用通用 prompt 方法
+            from .client import AIClient
 
-        Args:
-            response_message: OpenAI响应的message对象
+            # 构建提示词
+            prompt = AIClient.build_media_selection_prompt(
+                tv_candidates, movie_candidates, video_files, directory_name, is_anime
+            )
+            system_prompt = AIClient.get_media_selection_system_prompt()
 
-        Returns:
-            验证后的AIAnalysisResult对象，失败返回None
+            # 使用通用的结构化输出方法
+            return self._structured_output_with_validation(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                response_model=MediaSelectionResult
+            )
+
+        except Exception as e:
+            logger.error(f"[OpenAI识别] 媒体选择失败: {str(e)}")
+            return None
+
+    def _extract_and_validate_json_for_model(
+        self, response_message, response_model
+    ):
+        """
+        从OpenAI响应中提取JSON内容并使用指定模型验证
         """
         json_data = None
+        
         # 检查是否是Tool-calling响应
         if response_message.tool_calls:
             tool_call = response_message.tool_calls[0]
-            if tool_call.function.name == "analyze_file_structure":
-                logger.debug(f"[OpenAI识别] 识别到Tool-calling: {tool_call.function.name}")
-                try:
-                    json_data = json.loads(tool_call.function.arguments)
-                except json.JSONDecodeError as e:
-                    logger.error(f"[OpenAI识别] 解析Tool-calling JSON失败: {e}")
-                    logger.error(
-                        f"[OpenAI识别] 原始数据: {tool_call.function.arguments}"
-                    )
-                    return None
+            expected_function_name = getattr(response_model, 'FUNCTION_NAME', f"analyze_{response_model.__name__.lower()}")
+            
+            logger.debug(f"[OpenAI识别] 识别到Tool-calling: {tool_call.function.name}")
+            logger.debug(f"[OpenAI识别] 期望的函数名: {expected_function_name}")
+            
+            # 验证函数名是否匹配
+            if tool_call.function.name != expected_function_name:
+                logger.warning(f"[OpenAI识别] 函数名不匹配，期望: {expected_function_name}, 实际: {tool_call.function.name}")
+            
+            try:
+                json_data = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError as e:
+                logger.error(f"[OpenAI识别] 解析Tool-calling JSON失败: {e}")
+                return None
         else:
-            # 否则，从内容中提取
+            # 从内容中提取
             content = response_message.content
-            logger.debug(f"[OpenAI识别] 普通内容响应: {content}")
             if content:
                 json_data = self._extract_json_from_response(content)
 
@@ -152,9 +180,9 @@ class OpenAIClient(BaseAIClient):
             return None
 
         try:
-            # 使用Pydantic验证和解析
-            result = AIAnalysisResult(**json_data)
-            logger.info(f"[OpenAI识别] JSON结构验证成功，置信度: {result.confidence}")
+            # 使用指定模型验证和解析
+            result = response_model(**json_data)
+            logger.info(f"[OpenAI识别] JSON结构验证成功")
             return result
         except ValidationError as e:
             logger.error(f"[OpenAI识别] JSON结构验证失败: {e}")
@@ -169,12 +197,6 @@ class OpenAIClient(BaseAIClient):
     def _extract_json_from_response(self, content: str) -> Optional[Dict]:
         """
         从OpenAI响应中提取JSON内容，兼容思维链输出
-
-        Args:
-            content: OpenAI响应内容
-
-        Returns:
-            提取的JSON字典，失败返回None
         """
         try:
             # 首先尝试直接解析整个内容
@@ -207,12 +229,6 @@ class OpenAIClient(BaseAIClient):
     def _clean_json_content(self, json_str: str) -> str:
         """
         清理JSON字符串中可能的思维链内容
-
-        Args:
-            json_str: 原始JSON字符串
-
-        Returns:
-            清理后的JSON字符串
         """
         # 移除可能的思维链标记
         thinking_patterns = [
@@ -228,35 +244,16 @@ class OpenAIClient(BaseAIClient):
 
         return cleaned.strip()
 
-    def _get_json_schema(self) -> Dict:
-        """生成符合OpenAI Tool格式的JSON Schema"""
-        schema = AIAnalysisResult.model_json_schema()
-        return {
-            "type": "function",
-            "function": {
-                "name": "analyze_file_structure",
-                "description": "分析本地文件结构并返回与TMDB的映射关系",
-                "parameters": schema,
-            },
-        }
-
-    def _get_json_instructions(self) -> str:
+    def _get_json_instructions_for_model(self, response_model) -> str:
         """
-        获取在system prompt中使用的、详细的JSON格式指令 (使用JSON Schema)
-
-        Returns:
-            包含JSON Schema和注意事项的说明字符串
+        获取指定模型的JSON格式指令
         """
-        # 从Pydantic模型动态生成JSON Schema，确保与验证模型一致
-        schema = AIAnalysisResult.model_json_schema()
-
-        # 移除Pydantic生成的顶层描述，使Schema更简洁
+        schema = response_model.model_json_schema()
         schema.pop("title", None)
         schema.pop("description", None)
-
         schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
 
-        json_instructions = f"""
+        return f"""
 请严格按照以下JSON Schema格式返回分析结果。不要添加任何额外的解释或注释，只返回JSON对象。
 
 JSON Schema:
@@ -264,31 +261,40 @@ JSON Schema:
 {schema_str}
 ```
 """
-        return json_instructions
 
-    def _configure_output_format(self, request_params: Dict) -> None:
+    def _configure_output_format_for_model(self, request_params: Dict, response_model) -> None:
         """
-        根据配置的输出格式类型配置请求参数
-
-        Args:
-            request_params: 请求参数字典，会被直接修改
+        根据配置的输出格式类型和响应模型配置请求参数
         """
         if self.output_format == "function_calling":
-            request_params["tools"] = [self._get_json_schema()]
+            # 使用模型类中定义的静态function name
+            function_name = getattr(response_model, 'FUNCTION_NAME', f"analyze_{response_model.__name__.lower()}")
+            request_params["tools"] = [self._get_json_schema_for_model(response_model, function_name)]
             request_params["tool_choice"] = {
                 "type": "function",
-                "function": {"name": "analyze_file_structure"},
+                "function": {"name": function_name},
             }
-            # request_params["tool_choice"] = "auto"
         elif self.output_format == "json_object":
             request_params["response_format"] = {"type": "json_object"}
         elif self.output_format == "structured_output":
-            # 使用新的structured output API
             request_params["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
-                    "name": "ai_analysis_result",
-                    "schema": AIAnalysisResult.model_json_schema(),
+                    "name": response_model.__name__.lower(),
+                    "schema": response_model.model_json_schema(),
                 },
             }
-        # 如果是"text"格式，不添加任何特殊参数
+
+    def _get_json_schema_for_model(self, response_model, function_name: str) -> Dict:
+        """生成指定模型的OpenAI Tool格式JSON Schema"""
+        schema = response_model.model_json_schema()
+        description = getattr(response_model, 'FUNCTION_DESCRIPTION', f"分析并返回{response_model.__name__}格式的结果")
+        
+        return {
+            "type": "function",
+            "function": {
+                "name": function_name,
+                "description": description,
+                "parameters": schema,
+            },
+        }
