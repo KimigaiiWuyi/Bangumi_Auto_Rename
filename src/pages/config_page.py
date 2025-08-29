@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 from nicegui import ui
 
-from ..logger import logger
+from ..logger import logger, update_log_level_from_config
 from ..config.config_manager import CN_MAP, cm
 from ..element.red import RedButton, RedToogle
 from ..component.local_file_picker import local_file_picker
@@ -204,6 +204,12 @@ class ConfigPage(ui.dialog):
 
         logger.info('[配置] 配置已修改为： {}'.format(config_show))
         ui.notify("✅ 配置保存成功", type="positive")
+        # 更新运行时日志级别
+        try:
+            update_log_level_from_config()
+            logger.info(f"[配置] 运行时日志级别已更新为 {cm.get_config('log_level')}")
+        except Exception as e:
+            logger.error(f"[配置] 更新运行时日志级别失败: {e}")
         self.close()
 
     def _get_current_ui_config(self) -> dict:
