@@ -296,6 +296,7 @@ class Rename:
         movie_candidates: List[tuple],
         path: Path,
         is_anime: Optional[bool] = None,
+        cus_season_id: Optional[int] = None,
     ) -> Union[Tuple[str, Dict, bool, Optional[int]], None]:
         """
         从多个TMDB候选项中选择最佳匹配（使用AI或传统逻辑）
@@ -308,14 +309,36 @@ class Rename:
             - ai_season_id: AI识别的季号（如果AI选择了TV且识别了季号，否则为None）
         """
         total_candidates = len(tv_candidates) + len(movie_candidates)
+
+        # 检查是否需要使用AI
+        # 1. 多个候选项时使用AI
+        # 2. 单个TV候选项但包含多季（不只是S0和S1）且用户未指定季号时使用AI
+        should_use_ai = False
+        if total_candidates > 1:
+            should_use_ai = True
+        elif total_candidates == 1 and len(tv_candidates) == 1 and cus_season_id is None:
+            # 检查是否为多季剧集
+            _, tv_info = tv_candidates[0]
+            if tv_info and 'seasons' in tv_info:
+                # 统计除S0和S1外的季数
+                other_seasons = [s for s in tv_info['seasons']
+                                if s['season_number'] not in [0, 1]]
+                if other_seasons:
+                    logger.info(f'[处理任务] 检测到多季剧集（共{len(tv_info["seasons"])}季），'
+                               f'且用户未指定季号，将使用AI选择季号')
+                    should_use_ai = True
+
         should_use_ai = (
-            total_candidates > 1 and
+            should_use_ai and
             self.ai_processor.ai_client.is_available() and
             cm.get_config("ai_enabled")
         )
 
         if should_use_ai:
-            logger.info('[处理任务] 检测到多个候选项，启用AI进行智能选择')
+            if total_candidates > 1:
+                logger.info('[处理任务] 检测到多个候选项，启用AI进行智能选择')
+            else:
+                logger.info('[处理任务] 单个多季剧集且未指定季号，启用AI进行季号识别')
             ai_result = self.ai_processor.identify_and_select_media(
                 tv_candidates=tv_candidates,
                 movie_candidates=movie_candidates,
@@ -544,13 +567,14 @@ class Rename:
                 _is_movie,
             )
 
-        # 【Step.2】尝试使用AI选择候选项（如果有多个候选项）
+        # 【Step.2】尝试使用AI选择候选项（如果有多个候选项或单个多季剧集）
         ai_season_id = None
         ai_selection = self.select_media_candidate(
             tv_candidates,
             movie_candidates,
             path,
             _is_anime,
+            cus_season_id,
         )
 
         if ai_selection:
