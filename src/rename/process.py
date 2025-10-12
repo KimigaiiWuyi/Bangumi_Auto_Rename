@@ -62,9 +62,6 @@ class Rename:
 
         for season in tv_info['seasons']:
             info_season_id = season['season_number']
-            target_fold = work_path / f'Season{info_season_id}'
-            target_fold.mkdir(parents=True, exist_ok=True)
-
             sname: str = season['name']
             logger.info(f'[处理任务] Season{info_season_id} 季度名: {sname}')
 
