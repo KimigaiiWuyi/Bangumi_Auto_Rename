@@ -21,18 +21,21 @@ def _clean_title_case_insensitive(title: str):
     lower_keywords = [kw.lower() for kw in keywords]
     j = '|'.join(re.escape(kw) for kw in lower_keywords)
     keyword_regex = re.compile(j)
-
-    # 遍历所有括号类型
-    for pattern in bracket_patterns:
-        # 查找所有匹配的括号内容
-        matches = re.findall(pattern, title)  # 保留原始大小写内容
-        for match in matches:
-            # 转为小写进行匹配
-            if keyword_regex.search(match.lower()):
-                title = title.replace(match, '')  # 删除原始大小写内容
-
+    remain_count=0
+    # 查找所有匹配的括号内容
+    matches=re.findall('|'.join(bracket_patterns),title)
+    for match in matches:
+        # 转为小写进行匹配
+        if keyword_regex.search(match.lower()):
+            title = title.replace(match, '')
+        else:
+            remain_count+=1
+    # 如果有超过一个括号，则放弃，转而使用remove_tag skip=True的方案
+    if remain_count>1:
+        return ""
     # 返回清理后的标题
     return title.strip()[1:-1]
+
 
 
 def chinese_to_number(chinese_numeral):
