@@ -17,15 +17,15 @@ class AIProcessor:
         self.video_analyzer = VideoAnalyzer()
 
     def analyze_anime_files(
-        self, path: Path, anime_info: Dict
+        self, path: Path, anime_info: Dict, target_season: Optional[int] = None
     ) -> Optional[AIAnalysisResult]:
         """
         使用AI分析动漫文件的映射关系
 
         Args:
             path: 本地文件路径
-            anime_info: TMDB动漫信息
-            season_info: 特定季度信息（可选）
+            anime_info: TMDB动漫信息（建议已过滤为目标季+第0季）
+            target_season: 目标季号（可选，用于在提示词中提供额外提示）
 
         Returns:
             验证后的AI分析结果
@@ -44,7 +44,7 @@ class AIProcessor:
         file_analysis = self.video_analyzer.analyze_video_files(path, video_files)
 
         # 使用AI分析映射关系
-        ai_result = self.ai_client.analyze_episode_mapping(anime_info, file_analysis)
+        ai_result = self.ai_client.analyze_episode_mapping(anime_info, file_analysis, target_season)
 
         if ai_result:
             logger.info(f"[AI处理] AI分析完成，置信度: {ai_result.confidence}")

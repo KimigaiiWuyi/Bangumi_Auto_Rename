@@ -264,6 +264,44 @@ class Search:
         return []
 
 
+def filter_tv_info_by_season(tv_info: Dict, target_season: int) -> Dict:
+    """
+    过滤TV信息，只保留指定季和第0季（特典）
+
+    Args:
+        tv_info: 完整的TMDB电视剧信息
+        target_season: 目标季号
+
+    Returns:
+        过滤后的tv_info，只包含目标季和第0季的信息
+    """
+    if not tv_info:
+        return tv_info
+
+    # 复制原始信息，避免修改原始数据
+    filtered_info = tv_info.copy()
+
+    # 过滤seasons列表，只保留目标季和第0季
+    original_seasons = tv_info.get("seasons", [])
+    filtered_seasons = []
+
+    for season in original_seasons:
+        season_number = season.get("season_number", -1)
+        # 保留目标季和第0季
+        if season_number == target_season or season_number == 0:
+            filtered_seasons.append(season)
+            logger.debug(f"[季度过滤] 保留Season {season_number}的信息")
+
+    filtered_info["seasons"] = filtered_seasons
+
+    # 更新季数统计（不包括第0季）
+    non_zero_seasons = [s for s in filtered_seasons if s.get("season_number", 0) != 0]
+    filtered_info["number_of_seasons"] = len(non_zero_seasons)
+
+    logger.debug(f"[季度过滤] 过滤完成，保留{len(filtered_seasons)}个季度的信息（包括第0季）")
+    return filtered_info
+
+
 def extract_tv_info(tv_info: Dict) -> Dict:
     """
     从 TMDB 电视剧信息中提取 AI 需要的关键字段
@@ -274,7 +312,7 @@ def extract_tv_info(tv_info: Dict) -> Dict:
         # 跳过第0季（特别篇/OVA等）
         if season.get("season_number", 0) == 0:
             continue
-            
+
         seasons.append({
             "air_date": season.get("air_date", ""),
             "episode_count": season.get("episode_count", 0),
@@ -282,7 +320,7 @@ def extract_tv_info(tv_info: Dict) -> Dict:
             "overview": season.get("overview", ""),
             "season_number": season.get("season_number", 0)
         })
-    
+
     return {
         "id": tv_info.get("id"),
         "first_air_date": tv_info.get("first_air_date", ""),

@@ -31,6 +31,7 @@ class BaseAIClient(ABC):
         self,
         anime_info: Dict,
         local_files: List[Dict],
+        target_season: Optional[int] = None,
     ) -> Optional[AIAnalysisResult]:
         """
         分析本地文件与TMDB剧集的映射关系
@@ -38,6 +39,7 @@ class BaseAIClient(ABC):
         Args:
             anime_info: TMDB动漫信息
             local_files: 本地文件信息列表，包含文件名、路径、时长等
+            target_season: 目标季号（可选，用于在提示词中提供额外提示）
 
         Returns:
             验证后的AIAnalysisResult对象

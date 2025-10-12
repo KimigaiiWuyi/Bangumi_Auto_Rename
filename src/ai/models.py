@@ -121,27 +121,31 @@ class AIAnalysisResult(BaseModel):
 
 class MediaSelectionResult(BaseModel):
     """AI媒体识别和选择结果"""
-    
+
     # OpenAI Function Calling 使用的函数名（类变量）
     FUNCTION_NAME: ClassVar[str] = "identify_and_select_media"
     FUNCTION_DESCRIPTION: ClassVar[str] = "识别媒体类型并选择最匹配的TMDB条目"
-    
+
     reasoning: str = Field(
         ..., description="识别媒体类型和选择候选项的详细推理过程（放在最前面促进AI思考）"
     )
-    
+
     media_type: Literal["tv", "movie"] = Field(
         ..., description="媒体类型：tv（电视剧）或movie（电影）"
     )
-    
+
     selected_tmdb_id: int = Field(
         ..., description="选中的TMDB条目ID"
     )
-    
+
     selected_name: str = Field(
         ..., description="选中的媒体名称"
     )
-    
+
+    selected_season: Optional[int] = Field(
+        default=None, description="对于电视剧，识别的季度号；对于电影则为None。注意：第0季通常是特典/OVA"
+    )
+
     confidence: Literal["High", "Medium", "Low"] = Field(
         ..., description="识别和选择的整体置信度"
     )

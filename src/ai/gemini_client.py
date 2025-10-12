@@ -117,6 +117,7 @@ class GeminiClient(BaseAIClient):
         self,
         anime_info: Dict,
         local_files: List[Dict],
+        target_season: Optional[int] = None,
     ) -> Optional[AIAnalysisResult]:
         """
         使用Gemini API分析本地文件与TMDB剧集的映射关系
@@ -126,7 +127,7 @@ class GeminiClient(BaseAIClient):
             from .client import AIClient
 
             # 构建提示词
-            base_prompt = AIClient.build_common_prompt(anime_info, local_files)
+            base_prompt = AIClient.build_common_prompt(anime_info, local_files, target_season)
             prompt = self._add_gemini_instructions(base_prompt)
             system_prompt = AIClient.get_system_prompt()
 

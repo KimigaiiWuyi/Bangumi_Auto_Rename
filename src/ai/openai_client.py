@@ -89,6 +89,7 @@ class OpenAIClient(BaseAIClient):
         self,
         anime_info: Dict,
         local_files: List[Dict],
+        target_season: Optional[int] = None,
     ) -> Optional[AIAnalysisResult]:
         """
         使用OpenAI API分析本地文件与TMDB剧集的映射关系
@@ -98,7 +99,7 @@ class OpenAIClient(BaseAIClient):
             from .client import AIClient
 
             # 构建提示词
-            prompt = AIClient.build_common_prompt(anime_info, local_files)
+            prompt = AIClient.build_common_prompt(anime_info, local_files, target_season)
             system_prompt = AIClient.get_system_prompt()
 
             # 使用通用的结构化输出方法

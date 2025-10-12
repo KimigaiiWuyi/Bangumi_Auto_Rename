@@ -31,13 +31,15 @@ class AIClient:
         self,
         anime_info: Dict,
         local_files: List[Dict],
+        target_season: Optional[int] = None,
     ) -> Optional[AIAnalysisResult]:
         """
         分析本地文件与TMDB剧集的映射关系
 
         Args:
-            anime_info: TMDB动漫信息
+            anime_info: TMDB动漫信息（建议已过滤为目标季+第0季）
             local_files: 本地文件信息列表，包含文件名、路径、时长等
+            target_season: 目标季号（可选，用于在提示词中提供额外提示）
 
         Returns:
             验证后的AIAnalysisResult对象
@@ -55,23 +57,25 @@ class AIClient:
         return result
 
     @staticmethod
-    def build_common_prompt(anime_info: Dict, local_files: List[Dict]) -> str:
+    def build_common_prompt(anime_info: Dict, local_files: List[Dict], target_season: Optional[int] = None) -> str:
         """
         构建通用的分析提示词，不包含JSON格式要求
 
         Args:
             anime_info: TMDB动漫信息
             local_files: 本地文件信息列表，包含文件名、路径、时长等
+            target_season: 目标季号（可选，用于在提示词中提供额外提示）
 
         Returns:
             通用的分析提示词
         """
         # 构建TMDB信息
+        season_hint = f"\n识别的目标季号: Season {target_season}" if target_season is not None else ""
         tmdb_info = f"""
 动漫名称: {anime_info.get('name', '未知')}
 首播日期: {anime_info.get('first_air_date', '未知')}
 总季数: {anime_info.get('number_of_seasons', 0)}
-总集数: {anime_info.get('number_of_episodes', 0)}
+总集数: {anime_info.get('number_of_episodes', 0)}{season_hint}
 """
 
         # 构建季度信息
@@ -162,10 +166,16 @@ class AIClient:
 
 请特别注意以下情况：
 1. 如果本地文件数量较多（>3），通常是电视剧
-2. 如果本地文件数量较少（<=3），可能是电影或电视剧
+2. 如果本地文件数量较少（<=3），可能是电影
 3. 目录名称中包含季度信息（如Season、S01等），或者名称跟TMDB季度信息相似，通常表示电视剧
 4. 需要区分动漫和真人作品
 5. 选择最匹配的条目时，优先考虑名称相似度和发行时间
+
+对于电视剧类型，请同时识别具体的季度号：
+- 根据目录名称、文件名称、文件数量等信息推断季度号
+- 参考TMDB中的季度信息（seasons字段），包括季度名称、集数等
+- 本地文件的分季可能与TMDB官方分季不同，请结合名称和TMDB信息综合判断
+- 如果无法明确判断季度，请选择最可能的季度（通常是第1季）
 """
         return prompt
     
@@ -175,6 +185,7 @@ class AIClient:
         return (
             "你是一个专业的媒体文件分类助手。你需要根据本地文件信息和TMDB候选项，"
             + "准确判断媒体类型（电影或电视剧）并选择最匹配的TMDB条目。"
+            + "对于电视剧，还需要识别具体的季度号。"
             + "请特别注意区分原作和续作。"
         )
     
