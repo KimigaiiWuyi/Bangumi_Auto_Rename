@@ -9,7 +9,7 @@ from jikanpy import Jikan
 
 from .trans import Trans
 from ..logger import logger
-from .get_info import Search
+from .get_info import Search, filter_tv_info_by_season
 from ..utils.path import TASK_PATH
 from .ai_processor import AIProcessor
 from ..config.config_manager import cm
@@ -62,9 +62,6 @@ class Rename:
 
         for season in tv_info['seasons']:
             info_season_id = season['season_number']
-            target_fold = work_path / f'Season{info_season_id}'
-            target_fold.mkdir(parents=True, exist_ok=True)
-
             sname: str = season['name']
             logger.info(f'[处理任务] Season{info_season_id} 季度名: {sname}')
 
@@ -215,14 +212,38 @@ class Rename:
         _tuuid: Optional[str] = None,
         cus_name: Optional[str] = None,
         cus_season_id: Optional[int] = None,
+        _depth: int = 0,
+        _max_depth: int = 5,
     ):
-        if path.is_dir():
-            is_video = False
-            for sub_path in path.iterdir():
-                if not sub_path.is_dir() and sub_path.suffix in VIDEO_SUFFIX:
-                    is_video = True
+        """
+        递归处理路径，直到找到包含视频文件的目录或达到最大深度
 
-            if is_video:
+        Args:
+            path: 要处理的路径
+            _is_anime: 是否为动漫
+            _is_movie: 是否为电影
+            _tuuid: 任务UUID
+            cus_name: 自定义名称
+            cus_season_id: 自定义季号
+            _depth: 当前递归深度
+            _max_depth: 最大递归深度（默认5层）
+        """
+        # 检查递归深度
+        if _depth > _max_depth:
+            logger.warning(f'[处理任务] 已达到最大递归深度 {_max_depth}，停止展开: {path}')
+            return
+
+        if path.is_dir():
+            # 检查当前目录是否包含视频文件
+            has_video = False
+            for sub_path in path.iterdir():
+                if not sub_path.is_dir() and sub_path.suffix.lower() in VIDEO_SUFFIX:
+                    has_video = True
+                    break
+
+            if has_video:
+                # 当前目录包含视频文件，作为一个任务处理
+                logger.info(f'[处理任务] 在深度 {_depth} 发现视频文件，开始处理: {path}')
                 self._process(
                     path,
                     _is_anime,
@@ -232,16 +253,34 @@ class Rename:
                     cus_season_id,
                 )
             else:
+                # 当前目录不包含视频文件，递归处理子目录
+                logger.info(f'[处理任务] 目录深度 {_depth} 未发现视频文件，继续递归: {path}')
                 for sub_path in path.iterdir():
-                    self._process(
-                        sub_path,
-                        _is_anime,
-                        _is_movie,
-                        _tuuid,
-                        cus_name,
-                        cus_season_id,
-                    )
+                    if sub_path.is_dir():
+                        # 递归处理子目录，每个子目录作为独立的任务
+                        self.process(
+                            sub_path,
+                            _is_anime,
+                            _is_movie,
+                            None,  # 子目录使用新的UUID
+                            cus_name,
+                            cus_season_id,
+                            _depth + 1,
+                            _max_depth,
+                        )
+                    elif sub_path.suffix.lower() in VIDEO_SUFFIX:
+                        # 如果是单独的视频文件，直接处理
+                        logger.info(f'[处理任务] 在深度 {_depth} 发现单个视频文件: {sub_path}')
+                        self._process(
+                            sub_path,
+                            _is_anime,
+                            _is_movie,
+                            None,  # 单个文件使用新的UUID
+                            cus_name,
+                            cus_season_id,
+                        )
         else:
+            # 如果是文件，直接处理
             self._process(
                 path,
                 _is_anime,
@@ -251,98 +290,198 @@ class Rename:
                 cus_season_id,
             )
 
-    def check_task_type(
+    def select_media_candidate(
         self,
-        _uuid: str,
-        rtpath_name: str,
-        year: int,
+        tv_candidates: List[tuple],
+        movie_candidates: List[tuple],
         path: Path,
         is_anime: Optional[bool] = None,
-        is_movie: Optional[bool] = None,
-    ) -> Union[Tuple[str, Dict, bool, bool], str]:
-        season_id = 1
-        pos = 0
-        logger.info('[处理任务] 未传入任务类型，开始判断该文件是否为电影！')
+        cus_season_id: Optional[int] = None,
+    ) -> Union[Tuple[str, Dict, bool, Optional[int]], None]:
+        """
+        从多个TMDB候选项中选择最佳匹配（使用AI或传统逻辑）
 
-        s1_name, s1_info = self.search.get_tv_info(rtpath_name, year)
-        logger.info(f'[处理任务] 搜索到的电视剧名称: {s1_name}')
-        if not s1_name and year != 0:
-            s1_name, s1_info = self.search.get_tv_info(rtpath_name, 0)
-            logger.info(f'[处理任务] 未搜索到结果, 删除year后重试: {s1_name}')
+        Returns:
+            Tuple[name, info, is_movie, ai_season_id] or None if selection fails
+            - name: 选中的媒体名称
+            - info: 选中的TMDB信息
+            - is_movie: 是否为电影
+            - ai_season_id: AI识别的季号（如果AI选择了TV且识别了季号，否则为None）
+        """
+        total_candidates = len(tv_candidates) + len(movie_candidates)
 
-        s2_name, s2_info = self.search.get_movie_info(rtpath_name, year)
-        logger.info(f'[处理任务] 搜索到的电影名称: {s2_name}')
+        # 检查是否需要使用AI
+        # 1. 多个候选项时使用AI
+        # 2. 单个TV候选项但包含多季（不只是S0和S1）且用户未指定季号时使用AI
+        should_use_ai = False
+        if total_candidates > 1:
+            should_use_ai = True
+        elif total_candidates == 1 and len(tv_candidates) == 1 and cus_season_id is None:
+            # 检查是否为多季剧集
+            _, tv_info = tv_candidates[0]
+            if tv_info and 'seasons' in tv_info:
+                # 统计除S0和S1外的季数
+                other_seasons = [s for s in tv_info['seasons']
+                                if s['season_number'] not in [0, 1]]
+                if other_seasons:
+                    logger.info(f'[处理任务] 检测到多季剧集（共{len(tv_info["seasons"])}季），'
+                               f'且用户未指定季号，将使用AI选择季号')
+                    should_use_ai = True
 
-        if not s2_name and year != 0:
-            s2_name, s2_info = self.search.get_movie_info(
-                rtpath_name,
-                year,
+        should_use_ai = (
+            should_use_ai and
+            self.ai_processor.ai_client.is_available() and
+            cm.get_config("ai_enabled")
+        )
+
+        if should_use_ai:
+            if total_candidates > 1:
+                logger.info('[处理任务] 检测到多个候选项，启用AI进行智能选择')
+            else:
+                logger.info('[处理任务] 单个多季剧集且未指定季号，启用AI进行季号识别')
+            ai_result = self.ai_processor.identify_and_select_media(
+                tv_candidates=tv_candidates,
+                movie_candidates=movie_candidates,
+                path=path,
+                is_anime=is_anime,
             )
-            logger.info(f'[处理任务] 未搜索到结果, 删除year后重试: {s2_name}')
 
-        season_id = extract_season(rtpath_name)
+            # 检查AI置信度阈值
+            confidence_threshold = cm.get_config("ai_confidence_threshold")
+            should_use_ai_result = False
+
+            if ai_result:
+                if (
+                    confidence_threshold == "High"
+                    and ai_result.confidence == "High"
+                ):
+                    should_use_ai_result = True
+                elif confidence_threshold == "Medium" and ai_result.confidence in [
+                    "High",
+                    "Medium",
+                ]:
+                    should_use_ai_result = True
+                elif confidence_threshold == "Low":
+                    should_use_ai_result = True
+
+            if should_use_ai_result and ai_result:
+                logger.info(f'[处理任务] 使用AI选择结果：{ai_result.media_type} - {ai_result.selected_name}')
+                if ai_result.selected_season is not None:
+                    logger.info(f'[处理任务] AI建议季号：{ai_result.selected_season}')
+
+                # 根据AI结果找到对应的候选项
+                ai_selected_season = ai_result.selected_season
+                if ai_result.media_type == "tv":
+                    for name, info in tv_candidates:
+                        if info.get("id") == ai_result.selected_tmdb_id:
+                            return name, info, False, ai_selected_season
+                    logger.warning('[处理任务] AI选择的电视剧ID未在候选项中找到，回退到传统逻辑')
+                else:  # movie
+                    for name, info in movie_candidates:
+                        if info.get("id") == ai_result.selected_tmdb_id:
+                            return name, info, True, None
+                    logger.warning('[处理任务] AI选择的电影ID未在候选项中找到，回退到传统逻辑')
+            else:
+                logger.info('[处理任务] AI置信度不足或AI结果无效，使用传统方法处理')
+
+        # 回退到传统逻辑：返回None表示没有AI选择结果
+        return None
+
+    def check_task_type(
+        self,
+        tv_candidates: List[tuple],
+        movie_candidates: List[tuple],
+        rtpath_name: str,
+        path: Path,
+    ) -> Tuple[str, Dict, bool]:
+        """
+        使用传统打分逻辑判断媒体类型（TV vs Movie）
+
+        Returns:
+            Tuple[name, info, is_movie]
+        """
+        logger.info('[处理任务] 使用传统打分逻辑进行媒体类型判断')
+
+        # 获取第一个候选项
+        s1_name, s1_info = tv_candidates[0] if tv_candidates else ('', None)
+        s2_name, s2_info = movie_candidates[0] if movie_candidates else ('', None)
+
+        logger.debug(f'[处理任务] 传统逻辑选择的电视剧名称: {s1_name}')
+        logger.debug(f'[处理任务] 传统逻辑选择的电影名称: {s2_name}')
+
+        season_id_in_name = extract_season(rtpath_name)
+        pos = 0
 
         if s1_name:
             pos += 1
         elif s2_name:
             pos -= 1
 
-        if season_id == -1:
+        if season_id_in_name == -1:
             pos -= 0.6
             if path.is_file():
                 pos -= 0.5
         else:
             pos += 0.6
             if path.is_file():
-                pos += 0.5
+                pos -= 0.5
 
         if path.is_dir():
-            path_file_num = len([i for i in path.iterdir() if i.is_file()])
+            # 只统计视频文件数量
+            path_file_num = len([
+                i for i in path.iterdir()
+                if i.is_file() and i.suffix.lower() in VIDEO_SUFFIX
+            ])
             if path_file_num > 6:
                 pos += 0.4
             else:
                 pos -= 0.4
 
-        if pos > 0 or (is_movie is not None and not is_movie):
-            logger.info('[处理任务] 该文件可能为电视剧！')
-            is_movie = False
-            info = s1_info
-            name = s1_name
-
-            if not info:
-                logger.warning(f'[处理任务] 未搜索到电视剧信息, 跳过{rtpath_name}')
-                return f'[TMDB] 未搜索到电视剧信息, 跳过{rtpath_name}'
-
-            if is_anime is None:
-                for g in info['genres']:
-                    if g['name'].lower() == 'animation' or g['name'].lower() == 'anime':
-                        is_anime = True
-                        break
-                else:
-                    is_anime = False
+        if pos > 0:
+            logger.info('[处理任务] 传统逻辑判断: 该文件可能为电视剧！')
+            return s1_name, s1_info, False
         else:
-            logger.info('[处理任务] 该文件可能为电影！')
-            is_movie = True
-            info = s2_info
-            name = s2_name
+            logger.info('[处理任务] 传统逻辑判断: 该文件可能为电影！')
+            return s2_name, s2_info, True
+    
+    def determine_season_id(
+        self,
+        tv_info: Dict,
+        work_path: Path,
+        path: Path,
+        titles: Optional[List[Dict]],
+        cus_season_id: Optional[int] = None,
+        ai_season_id: Optional[int] = None,
+    ) -> int:
+        """
+        确定季号，优先级：用户指定 > AI识别 > 传统方法
 
-            if not info:
-                logger.warning(f'[处理任务] 未搜索到电影信息, 跳过{rtpath_name}')
-                return self.error_reply(
-                    _uuid,
-                    f'[TMDB] 未搜索到电影信息, 跳过{rtpath_name}',
-                    path,
-                    is_anime,
-                )
+        Args:
+            tv_info: TMDB电视剧信息
+            work_path: 工作路径
+            path: 原始路径
+            titles: 标题列表（用于MyAnimeList）
+            cus_season_id: 用户指定的季号
+            ai_season_id: AI识别的季号
 
-            if is_anime is None:
-                for g in info['genres']:
-                    if g['name'].lower() == 'animation' or g['name'].lower() == 'anime':
-                        is_anime = True
-                        break
-                else:
-                    is_anime = False
-        return name, info, is_anime, is_movie
+        Returns:
+            确定的季号
+        """
+        # 优先级1: 用户指定的季号
+        if cus_season_id is not None:
+            logger.info(f'[处理任务] 使用用户指定季号：{cus_season_id}')
+            return int(cus_season_id)
+
+        # 优先级2: AI识别的季号
+        if ai_season_id is not None:
+            logger.info(f'[处理任务] 使用AI识别季号：{ai_season_id}')
+            return ai_season_id
+
+        # 优先级3: 传统方法识别季号
+        logger.info('[处理任务] 使用传统方法识别季号')
+        season_id = self.get_season_id(tv_info, work_path, path, titles)
+        logger.info(f'[处理任务] 传统方法识别季号：{season_id}')
+        return season_id
 
     def _process(
         self,
@@ -404,44 +543,77 @@ class Rename:
             rtpath_name = cus_name
 
         # 【Step.1.5】
-        # 判断类型是否为电影
-        task_type = self.check_task_type(
-            _uuid,
-            rtpath_name,
-            year,
-            path,
-            _is_anime,
-            _is_movie,
-        )
-        if isinstance(task_type, str):
+        # 获取TMDB候选项（多个）
+        logger.info('[处理任务] 未传入任务类型，开始搜索TMDB信息')
+        tv_candidates = self.search.get_tv_info_candidates(rtpath_name, year)
+        logger.info(f'[处理任务] 搜索到{len(tv_candidates)}个电视剧候选项')
+        if not tv_candidates and year != 0:
+            tv_candidates = self.search.get_tv_info_candidates(rtpath_name, 0)
+            logger.info(f'[处理任务] 删除year后重试，搜索到{len(tv_candidates)}个电视剧候选项')
+
+        movie_candidates = self.search.get_movie_info_candidates(rtpath_name, year)
+        logger.info(f'[处理任务] 搜索到{len(movie_candidates)}个电影候选项')
+        if not movie_candidates and year != 0:
+            movie_candidates = self.search.get_movie_info_candidates(rtpath_name, 0)
+            logger.info(f'[处理任务] 删除year后重试，搜索到{len(movie_candidates)}个电影候选项')
+
+        # 如果没有找到任何候选项，返回错误
+        if not tv_candidates and not movie_candidates:
             return self.error_reply(
                 _uuid,
-                task_type,
+                f'[TMDB] 未搜索到任何信息, 跳过{rtpath_name}',
                 path,
                 _is_anime,
                 _is_movie,
             )
 
-        name, info, is_anime, is_movie = (
-            task_type[0],
-            task_type[1],
-            task_type[2],
-            task_type[3],
+        # 【Step.2】尝试使用AI选择候选项（如果有多个候选项或单个多季剧集）
+        ai_season_id = None
+        ai_selection = self.select_media_candidate(
+            tv_candidates,
+            movie_candidates,
+            path,
+            _is_anime,
+            cus_season_id,
         )
 
-        # 【Step.2】
+        if ai_selection:
+            # AI成功选择了候选项
+            name, info, is_movie, ai_season_id = ai_selection
+            logger.info(f'[处理任务] 使用AI选择结果：{"电影" if is_movie else "电视剧"} - {name}')
+        else:
+            # 使用传统打分逻辑判断类型
+            name, info, is_movie = self.check_task_type(
+                tv_candidates,
+                movie_candidates,
+                rtpath_name,
+                path,
+            )
+
+        # 检查是否成功获取信息
+        if not info:
+            media_type_str = '电影' if is_movie else '电视剧'
+            return self.error_reply(
+                _uuid,
+                f'[TMDB] 未搜索到{media_type_str}信息, 跳过{rtpath_name}',
+                path,
+                _is_anime,
+                _is_movie,
+            )
+
+        # 【Step.3】判断是否为动漫
+        is_anime = _is_anime
+        if is_anime is None:
+            for g in info['genres']:
+                if g['name'].lower() == 'animation' or g['name'].lower() == 'anime':
+                    is_anime = True
+                    break
+            else:
+                is_anime = False
+
+        # 【Step.4】
         # 如果是电影
         if is_movie:
-            if not name:
-                logger.warning(f'[处理任务] 未搜索到电影信息, 跳过{rtpath_name}')
-                return self.error_reply(
-                    _uuid,
-                    f'[TMDB] 未搜索到电影信息, 跳过{rtpath_name}',
-                    path,
-                    is_anime,
-                    is_movie,
-                )
-
             if is_anime:
                 _WORK_PATH = self.ANIME_MOVIE_PATH
             else:
@@ -488,29 +660,19 @@ class Rename:
                 titles = [{'type': 'Default', 'title': name}]
                 _WORK_PATH = self.BANGUMI_PATH
 
-            if not name:
-                logger.warning(f'[处理任务] 未搜索到剧集信息, 跳过{rtpath_name}')
-                return self.error_reply(
-                    _uuid,
-                    f'[TMDB] 未搜索到剧集信息, 跳过{rtpath_name}',
-                    path,
-                    is_anime,
-                    is_movie,
-                )
-
             first_data: str = info['first_air_date']
             first_year = first_data.split('-')[0]
             work_path = _WORK_PATH / f'{name} ({first_year})'
 
-            season_id = self.get_season_id(
-                info,
-                work_path,
-                path,
-                titles,
+            # 【Step.5】确定季号（优先级：用户指定 > AI识别 > 传统方法）
+            season_id = self.determine_season_id(
+                tv_info=info,
+                work_path=work_path,
+                path=path,
+                titles=titles,
+                cus_season_id=cus_season_id,
+                ai_season_id=ai_season_id,
             )
-
-            if cus_season_id:
-                season_id = int(cus_season_id)
 
             # 【AI增强处理】
             # 如果是动漫且启用了AI，使用AI分析文件映射
@@ -518,8 +680,13 @@ class Rename:
                 logger.info("[处理任务] 启用AI分析动漫文件映射")
                 logger.info("[处理任务] 填充详细季信息")
                 tv_info = self.search.fill_season_info(info)
+
+                # 过滤TMDB信息，只保留识别的季和第0季
+                logger.info(f"[处理任务] 过滤TMDB信息，只保留Season {season_id}和Season 0")
+                filtered_tv_info = filter_tv_info_by_season(tv_info, season_id)
+
                 ai_result: AIAnalysisResult | None = (
-                    self.ai_processor.analyze_anime_files(path, tv_info)
+                    self.ai_processor.analyze_anime_files(path, filtered_tv_info, season_id)
                 )
 
                 # 检查AI置信度阈值

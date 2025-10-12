@@ -2,12 +2,16 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypeVar, Type
+from pydantic import BaseModel, ValidationError
+import logging
+
+T = TypeVar('T', bound=BaseModel)
 
 from ..config.config_manager import cm
 from ..logger import logger
 from ..utils.path import AI_ANALYSIS_PATH
-from .models import AIAnalysisResult
+from .models import AIAnalysisResult, MediaSelectionResult
 
 
 class BaseAIClient(ABC):
@@ -27,6 +31,7 @@ class BaseAIClient(ABC):
         self,
         anime_info: Dict,
         local_files: List[Dict],
+        target_season: Optional[int] = None,
     ) -> Optional[AIAnalysisResult]:
         """
         分析本地文件与TMDB剧集的映射关系
@@ -34,6 +39,7 @@ class BaseAIClient(ABC):
         Args:
             anime_info: TMDB动漫信息
             local_files: 本地文件信息列表，包含文件名、路径、时长等
+            target_season: 目标季号（可选，用于在提示词中提供额外提示）
 
         Returns:
             验证后的AIAnalysisResult对象
@@ -44,6 +50,51 @@ class BaseAIClient(ABC):
     def is_available(self) -> bool:
         """检查AI客户端是否可用"""
         raise NotImplementedError
+    
+    @abstractmethod
+    def identify_and_select_media(
+        self,
+        tv_candidates: List[Dict],  # 已提取的电视剧信息
+        movie_candidates: List[Dict],  # 已提取的电影信息
+        video_files: List[str],
+        directory_name: str,
+        is_anime: Optional[bool] = None,
+    ) -> Optional[MediaSelectionResult]:
+        """
+        识别媒体类型并选择最佳TMDB候选项
+        
+        Args:
+            tv_candidates: 电视剧候选项列表（已提取关键字段）
+            movie_candidates: 电影候选项列表（已提取关键字段）
+            video_files: 本地视频文件列表
+            directory_name: 目录名称
+            is_anime: 用户指定的是否为动漫
+            
+        Returns:
+            识别和选择结果
+        """
+        raise NotImplementedError
+
+    def _structured_output_with_validation(
+        self,
+        prompt: str,
+        system_prompt: str,
+        response_model: Type[T],
+        **kwargs
+    ) -> Optional[T]:
+        """
+        通用的结构化输出+验证方法，供具体客户端实现调用
+        
+        Args:
+            prompt: 用户提示词
+            system_prompt: 系统提示词
+            response_model: 响应的Pydantic模型类
+            **kwargs: 额外的参数传递给具体实现
+            
+        Returns:
+            验证后的模型实例，失败返回None
+        """
+        raise NotImplementedError("子类必须实现此方法")
 
     def _save_analysis_data(
         self,

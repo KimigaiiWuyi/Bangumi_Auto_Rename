@@ -7,7 +7,7 @@ from google.genai.types import HttpOptions, GenerateContentConfig
 
 from ..logger import logger
 from .base_client import BaseAIClient
-from .models import AIAnalysisResult
+from .models import AIAnalysisResult, MediaSelectionResult
 from ..config.config_manager import cm
 
 
@@ -52,96 +52,91 @@ class GeminiClient(BaseAIClient):
         """检查Gemini客户端是否可用"""
         return bool(self.enabled and self.client and self.api_key)
 
-    def analyze_episode_mapping(
+    def _structured_output_with_validation(
         self,
-        anime_info: Dict,
-        local_files: List[Dict],
-    ) -> Optional[AIAnalysisResult]:
+        prompt: str,
+        system_prompt: str,
+        response_model,
+        **kwargs
+    ):
         """
-        使用Gemini API分析本地文件与TMDB剧集的映射关系
-
-        Args:
-            anime_info: TMDB动漫信息
-            local_files: 本地文件信息列表，包含文件名、路径、时长等
-
-        Returns:
-            验证后的AIAnalysisResult对象
+        Gemini的通用结构化输出+验证方法
         """
-        if not self.is_available():
-            logger.warning("[Gemini识别] Gemini功能未启用或配置不完整")
-            return None
-
-        if not self.client:
-            logger.error("[Gemini识别] Gemini 客户端未初始化")
+        if not self.is_available() or not self.client:
+            logger.error("[Gemini识别] 客户端不可用")
             return None
 
         try:
-            # 导入AIClient以使用通用prompt方法
-            from .client import AIClient
-
-            # 使用通用prompt构建基础内容
-            base_prompt = AIClient.build_common_prompt(anime_info, local_files)
-
-            # Gemini使用原生结构化输出，不需要额外的JSON格式说明
-            prompt = self._add_gemini_instructions(base_prompt)
-
-            # 使用通用系统提示词
-            system_prompt = AIClient.get_system_prompt()
-
-            # 使用Gemini的结构化输出功能
-            # 获取Gemini兼容的JSON Schema（移除了additionalProperties）
-            schema = AIAnalysisResult.model_json_schema()
-
+            # 获取JSON Schema
+            schema = response_model.model_json_schema()
+            
             logger.debug(f"[Gemini识别] 使用Schema: {schema}")
 
-            try:
-                request_contents = f"{prompt}"
-                request_config = GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    response_mime_type="application/json",
-                    response_schema=schema,
-                    temperature=self.temperature,
-                )
-                request = {
-                    'model': self.model,
-                    'config': request_config,
-                    'contents': request_contents
-                }
-                logger.debug(f"[Gemini识别] Request: {request}")
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=request_contents,
-                    config=request_config,
-                )
-            except Exception as e:
-                logger.error(f"[Gemini识别] Gemini API调用失败: {e}")
-                return None
+            # 构建请求
+            request_config = GenerateContentConfig(
+                system_instruction=system_prompt,
+                response_mime_type="application/json",
+                response_schema=schema,
+                temperature=self.temperature,
+            )
+            
+            response = self.client.models.generate_content(
+                model=self.model,
+                contents=prompt,
+                config=request_config,
+            )
 
             logger.debug(f"[Gemini识别] Raw response text: {response.text}")
+            
             if not response or not response.text:
-                logger.error("[Gemini识别] Gemini 响应内容为空")
+                logger.error("[Gemini识别] 响应内容为空")
                 return None
 
-            # 直接使用Gemini的解析结果
+            # 优先使用Gemini的解析结果
             if hasattr(response, 'parsed') and response.parsed:
-                logger.debug(f"[Gemini识别] 解析后的JSON: {response.parsed}")
-                result = AIAnalysisResult.model_validate(response.parsed)
-                logger.info(
-                    f"[Gemini识别] 使用解析后的结果，置信度: {result.confidence}"
-                )
+                logger.debug(f"[Gemini识别] 使用解析后的结果: {response.parsed}")
+                result = response_model.model_validate(response.parsed)
                 return result
 
-            # 如果没有解析结果，尝试手动解析JSON
+            # 备用：手动解析JSON
             try:
                 json_data = json.loads(response.text)
-                logger.debug("[Gemini识别] 手动解析的JSON成功!")
-                result = AIAnalysisResult(**json_data)
-                logger.info(f"[Gemini识别] 手动解析成功，置信度: {result.confidence}")
+                logger.debug("[Gemini识别] 手动解析JSON成功")
+                result = response_model(**json_data)
                 return result
             except (json.JSONDecodeError, ValidationError) as e:
                 logger.error(f"[Gemini识别] JSON解析失败: {e}")
                 logger.error(f"[Gemini识别] 原始响应: {response.text[:200]}...")
                 return None
+
+        except Exception as e:
+            logger.error(f"[Gemini识别] 结构化输出失败: {str(e)}")
+            return None
+
+    def analyze_episode_mapping(
+        self,
+        anime_info: Dict,
+        local_files: List[Dict],
+        target_season: Optional[int] = None,
+    ) -> Optional[AIAnalysisResult]:
+        """
+        使用Gemini API分析本地文件与TMDB剧集的映射关系
+        """
+        try:
+            # 导入AIClient以使用通用prompt方法
+            from .client import AIClient
+
+            # 构建提示词
+            base_prompt = AIClient.build_common_prompt(anime_info, local_files, target_season)
+            prompt = self._add_gemini_instructions(base_prompt)
+            system_prompt = AIClient.get_system_prompt()
+
+            # 使用通用的结构化输出方法
+            return self._structured_output_with_validation(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                response_model=AIAnalysisResult
+            )
 
         except Exception as e:
             logger.error(f"[Gemini识别] 分析失败: {str(e)}")
@@ -163,3 +158,35 @@ class GeminiClient(BaseAIClient):
 注意：请确保返回的数据严格符合AIAnalysisResult的结构定义，所有字段类型和枚举值必须准确。
 """
         return base_prompt + gemini_instructions
+
+    def identify_and_select_media(
+        self,
+        tv_candidates: List[Dict],
+        movie_candidates: List[Dict],
+        video_files: List[str],
+        directory_name: str,
+        is_anime: Optional[bool] = None,
+    ) -> Optional[MediaSelectionResult]:
+        """
+        使用Gemini API识别媒体类型并选择最佳候选项
+        """
+        try:
+            # 从 client.py 导入 AIClient 以使用通用 prompt 方法
+            from .client import AIClient
+
+            # 构建提示词
+            prompt = AIClient.build_media_selection_prompt(
+                tv_candidates, movie_candidates, video_files, directory_name, is_anime
+            )
+            system_prompt = AIClient.get_media_selection_system_prompt()
+
+            # 使用通用的结构化输出方法
+            return self._structured_output_with_validation(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                response_model=MediaSelectionResult
+            )
+
+        except Exception as e:
+            logger.error(f"[Gemini识别] 媒体选择失败: {str(e)}")
+            return None
