@@ -19,9 +19,9 @@ class AIClient:
 
         # 根据提供商创建相应的客户端
         if self.provider.lower() == "gemini":
-            self._client = GeminiClient()
+            self._client: BaseAIClient = GeminiClient()
         else:  # 默认使用OpenAI
-            self._client = OpenAIClient()
+            self._client: BaseAIClient = OpenAIClient()
 
     def is_available(self) -> bool:
         """检查AI客户端是否可用"""

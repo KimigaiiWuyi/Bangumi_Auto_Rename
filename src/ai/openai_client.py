@@ -173,6 +173,7 @@ class OpenAIClient(BaseAIClient):
         else:
             # 从内容中提取
             content = response_message.content
+            logger.debug(f"[OpenAI识别] 普通内容响应: {content}")
             if content:
                 json_data = self._extract_json_from_response(content)
 
